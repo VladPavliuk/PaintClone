@@ -6,6 +6,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	windowClass.hInstance = hInstance;
 	windowClass.lpszClassName = L"window class";
 	windowClass.lpfnWndProc = WindowCallback;
+	windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
 
 	RegisterClass(&windowClass);
 
@@ -29,7 +30,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 	ShowWindow(hwnd, windowMode);
 	InitRenderer(&windowData, hwnd);
-	
+
+	FillWindowClientWithWhite(&windowData);
+	DrawRect(&windowData, 130, 100, 50, 30, { (char)12,(char)12,(char)12 });
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
@@ -41,7 +44,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		}
 
 		// drawing
-		DrawRect(&windowData, 130, 100, 50, 30, {(char)12,(char)12,(char)12});
 
 		StretchDIBits(
 			windowData.deviceContext,

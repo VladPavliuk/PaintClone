@@ -28,6 +28,15 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	//ZeroMemory(windowData->bitmap, 4 * windowData->clientSize.x * windowData->clientSize.y);
 }
 
+void FillWindowClientWithWhite(WindowData* windowData)
+{
+	int length = 4 * windowData->clientSize.x * windowData->clientSize.y;
+	for (int i = 0; i < length; i++)
+	{
+		windowData->bitmap[i] = (char)255;
+	}
+}
+
 void DrawRect(WindowData* windowData, int x, int y, int width, int height, char3 color)
 {
 	char* currentPixel = windowData->bitmap + 4 * (x + windowData->clientSize.x * y);

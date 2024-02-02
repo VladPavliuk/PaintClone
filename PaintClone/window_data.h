@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Windows.h>
+#include <windowsx.h>
 
 #include "custom_types.h"
 
