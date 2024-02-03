@@ -14,11 +14,27 @@ struct char3
 };
 
 typedef unsigned char ubyte;
+
 struct ubyte3
 {
 	ubyte x;
 	ubyte y;
 	ubyte z;
+};
+
+struct ubyte4
+{
+	ubyte4()
+	{}
+
+	ubyte4(ubyte x, ubyte y, ubyte z, ubyte w):
+		x(x), y(y), z(z), w(w)
+	{}
+
+	ubyte x;
+	ubyte y;
+	ubyte z;
+	ubyte w;
 };
 
 struct ubyte2

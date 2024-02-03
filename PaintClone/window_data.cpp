@@ -12,14 +12,14 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 	}
 	case WM_RBUTTONUP:
 	{
-		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+		/*WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 		int xMouse = GET_X_LPARAM(lParam);
 		int yMouse = GET_Y_LPARAM(lParam);
 
 		yMouse = windowData->clientSize.y - yMouse;
 
-		windowData->fillFrom = { xMouse, yMouse };
+		windowData->fillFrom = { xMouse, yMouse };*/
 		break;
 	}
 	case WM_LBUTTONUP:
@@ -42,6 +42,15 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		if (zAndId.y == 0)
 		{
 			windowData->isDrawing = true;
+
+			switch (windowData->selectedTool)
+			{
+			case DRAW_TOOL::FILL:
+			{
+				windowData->oneTimeClick = windowData->mousePosition;
+				break;
+			}
+			}
 		}
 		break;
 	}
@@ -56,17 +65,16 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		windowData->mousePosition = { xMouse, yMouse };
 
-		if (wParam == MK_LBUTTON)
+		if (wParam == MK_LBUTTON && windowData->isDrawing)
 		{
-			if (windowData->isDrawing)
+			switch (windowData->selectedTool)
+			{
+			case DRAW_TOOL::PENCIL:
 			{
 				windowData->pixelsToDraw.add(windowData->mousePosition);
+				break;
 			}
-
-			//int pixelIndex = 4 * (xMouse + yMouse * windowData->clientSize.x);
-			//windowData->bitmap[pixelIndex] = 130;
-			//windowData->bitmap[pixelIndex + 1] = 130;
-			//windowData->bitmap[pixelIndex + 2] = 130;
+			}
 		}
 
 		break;

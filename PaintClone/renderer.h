@@ -14,3 +14,5 @@ void DrawBorderRect(WindowData* windowData, int2 bottomLeft, int2 size, int line
 
 inline ubyte3 GetPixelColor(WindowData* windowData, int x, int y);
 inline void DrawPixel(WindowData* windowData, int x, int y, ubyte3 color);
+
+void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 topLeft, int2 bitmapSize);

@@ -28,9 +28,9 @@ ubyte2 GetZAndIdFromBuffer(WindowData* windowData, int2 position)
 	return *(windowData->zAndIdBuffer + (position.x + windowData->clientSize.x * position.y));
 }
 
-void DrawPanel(WindowData* windowData, 
-	int2 bottomLeft, int2 size, 
-	ubyte3 bgColor, 
+void DrawPanel(WindowData* windowData,
+	int2 bottomLeft, int2 size,
+	ubyte3 bgColor,
 	ubyte zIndex, ubyte uiId)
 {
 	/*DrawPanel(windowData,
@@ -64,7 +64,7 @@ bool DrawButton(WindowData* windowData,
 	DrawRectToZAndIdBuffer(windowData,
 		bottomLeft, size,
 		zIndex, uiId);
-	
+
 	// NOTE: if we in the process of drawing, ignore any action performed by button
 	if (windowData->isDrawing)
 	{
@@ -79,18 +79,36 @@ bool DrawButton(WindowData* windowData,
 	return false;
 }
 
-void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<ubyte3>* colors, int2 bottomLeft, 
+void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<ubyte3>* colors, int2 bottomLeft,
 	int2 singleColorTileSize, int xDistanceToNextColor)
 {
 	for (int i = 0; i < colors->length; i++)
 	{
 		ubyte3 color = colors->get(i);
 
-		if (DrawButton(windowData, 
-			{ bottomLeft.x + (singleColorTileSize.x * i) + (xDistanceToNextColor * i), bottomLeft.y},
+		if (DrawButton(windowData,
+			{ bottomLeft.x + (singleColorTileSize.x * i) + (xDistanceToNextColor * i), bottomLeft.y },
 			singleColorTileSize, color, color, 1, i + 1))
 		{
 			windowData->selectedColor = color;
 		}
+	}
+}
+
+void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
+	int2 singleToolTileSize, int yDistanceToNextToolTile)
+{
+	if (DrawButton(windowData,
+		{ bottomLeft.x, bottomLeft.y },
+		singleToolTileSize, { 90,0,90 }, { 120,0,120 }, 1, 11))
+	{
+		windowData->selectedTool = DRAW_TOOL::PENCIL;
+	}
+
+	if (DrawButton(windowData,
+		{ bottomLeft.x, bottomLeft.y + 30 },
+		singleToolTileSize, { 90,90,0 }, { 120,120,0 }, 1, 12))
+	{
+		windowData->selectedTool = DRAW_TOOL::FILL;
 	}
 }

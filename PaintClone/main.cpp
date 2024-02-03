@@ -2,6 +2,10 @@
 #include "ui.h"
 #include <stdio.h>
 
+//TODO
+// Render bitmap into rect
+// Load bmp
+// Store bmp
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, int windowMode)
 {
 	WNDCLASS windowClass = {};
@@ -15,10 +19,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	WindowData windowData;
 
 	windowData.pixelsToDraw = SimpleDynamicArray<int2>(2);
-	windowData.fillFrom = { -1, -1 };
+	windowData.oneTimeClick = { -1, -1 };
 	windowData.isRightButtonHold = false;
 	windowData.mousePosition = { 0,0 };
 	windowData.selectedColor = { 0,0,0 };
+	windowData.selectedTool = DRAW_TOOL::PENCIL;
 
 	HWND hwnd = CreateWindowExW(
 		0,
@@ -53,6 +58,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	//DrawLine(&windowData, { 500,500 }, { 100,100 });
 	//DrawRect(&windowData, 0, 0, 50, 30, { (ubyte)12,(ubyte)12,(ubyte)12 });
 
+	/*ubyte4* bitmapToCopy = (ubyte4*)malloc(120*120*4);
+
+	bitmapToCopy[0] = ubyte4(120,0,0,0);
+	bitmapToCopy[1] = ubyte4(120,0,0,0);
+	bitmapToCopy[2] = ubyte4(120,0,0,0);
+	bitmapToCopy[3] = ubyte4(120,0,0,0);
+	DrawBitmap(&windowData, bitmapToCopy, { 300,300 }, { 120, 120 });*/
 	//DrawBorderRect(&windowData, {0,0}, { 100,100 }, 2, { 120,120,49 });
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
@@ -64,47 +76,51 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			continue;
 		}
 
-		//> pencil drawing
-		if (windowData.pixelsToDraw.length > 1)
+		if (windowData.isDrawing)
 		{
-			int2 fromPixel = windowData.pixelsToDraw.get(0);
-			int2 toPixel = windowData.pixelsToDraw.get(1);
+			switch (windowData.selectedTool)
+			{
+			case DRAW_TOOL::PENCIL:
+			{
+				//> pencil drawing
+				if (windowData.pixelsToDraw.length > 1)
+				{
+					int2 fromPixel = windowData.pixelsToDraw.get(0);
+					int2 toPixel = windowData.pixelsToDraw.get(1);
 
-			DrawLine(&windowData, fromPixel, toPixel, windowData.selectedColor);
+					DrawLine(&windowData, fromPixel, toPixel, windowData.selectedColor);
 
-			//windowData.pixelsToDraw.remove(1);
-			windowData.pixelsToDraw.remove(0);
+					//windowData.pixelsToDraw.remove(1);
+					windowData.pixelsToDraw.remove(0);
+				}
+
+				//<
+
+				break;
+			}
+			case DRAW_TOOL::FILL:
+			{
+				//> filling
+				if (windowData.oneTimeClick.x != -1)
+				{
+					FillFromPixel(&windowData, windowData.oneTimeClick, windowData.selectedColor);
+					windowData.oneTimeClick = {-1,-1};
+				}
+				//<
+				break;
+			}
+			}
 		}
 
 		if (!windowData.isRightButtonHold)
 		{
 			windowData.pixelsToDraw.clean();
 		}
-		//<
-
-		//> filling
-		if (windowData.fillFrom.x != -1)
-		{
-			FillFromPixel(&windowData, windowData.fillFrom, { 200,0,0 });
-			windowData.fillFrom.x = -1;
-		}
-		//<
 
 		// ui
-		DrawColorsBrush(&windowData, &colors, { 5, 5 },
-			{ 15,15 }, 5);
-		/*if (DrawButton(&windowData, { 5,5 }, { 15,15 }, { 255,0,0 }, { 255,0,0 }, 1, 1))
-		{
-			windowData.selectedColor = { 255,0,0 };
-		}
-		if (DrawButton(&windowData, { 25,5 }, { 15,15 }, { 0,255,0 }, { 0,255,0 }, 1, 2))
-		{
-			windowData.selectedColor = { 0,255,0 };
-		}
-		if (DrawButton(&windowData, { 45,5 }, { 15,15 }, { 0,0,255 }, { 0,0,255 }, 1, 3))
-		{
-			windowData.selectedColor = { 0,0,255 };
-		}*/
+		DrawColorsBrush(&windowData, &colors, { 5, 5 }, { 15,15 }, 5);
+
+		DrawToolsPanel(&windowData, { 5, 40 }, { 15,15 }, 10);
 
 		//char buff[100];
 		////sprintf_s(buff, "x: %i. y: %i\n", windowData.mousePosition.x, windowData.mousePosition.y);

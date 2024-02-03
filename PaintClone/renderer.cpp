@@ -23,7 +23,7 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	//windowData->bitmapInfo.bmiColors = 0;
 
 	// create actual bitmap with r,g,b,_
-	windowData->bitmap = (ubyte*)malloc(4 * windowData->clientSize.x * windowData->clientSize.y);
+	windowData->bitmap = (ubyte4*)malloc(4 * windowData->clientSize.x * windowData->clientSize.y);
 	//ZeroMemory(windowData->bitmap, 4 * windowData->clientSize.x * windowData->clientSize.y);
 
 	windowData->zAndIdBuffer = (ubyte2*)malloc(2 * windowData->clientSize.x * windowData->clientSize.y);
@@ -32,10 +32,10 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 
 void FillWindowClientWithWhite(WindowData* windowData)
 {
-	int length = 4 * windowData->clientSize.x * windowData->clientSize.y;
+	int length = windowData->clientSize.x * windowData->clientSize.y;
 	for (int i = 0; i < length; i++)
 	{
-		windowData->bitmap[i] = (ubyte)255;
+		windowData->bitmap[i] = ubyte4(255, 255, 255, 0);
 	}
 }
 
@@ -69,27 +69,27 @@ void DrawLine(WindowData* windowData, int2 from, int2 to, ubyte3 color)
 
 void DrawRect(WindowData* windowData, int x, int y, int width, int height, ubyte3 color)
 {
-	ubyte* currentPixel = windowData->bitmap + 4 * (x + windowData->clientSize.x * y);
-	int pitch = 4 * windowData->clientSize.x;
+	ubyte4* currentPixel = windowData->bitmap + (x + windowData->clientSize.x * y);
+	int pitch = windowData->clientSize.x;
 
 	for (int i = 0; i < height; i++)
 	{
 		for (int j = 0; j < width; j++)
 		{
-			*currentPixel = color.z; // b
-			currentPixel++;
+			*currentPixel = ubyte4(color.z, color.y, color.x, 0);
+			//currentPixel++;
 
-			*currentPixel = color.y; //g
-			currentPixel++;
+			//*currentPixel = color.y; //g
+			//currentPixel++;
 
-			*currentPixel = color.x; // r
-			currentPixel++;
+			//*currentPixel = color.x; // r
+			//currentPixel++;
 
 			//*currentPixel = 0;
 			currentPixel++;
 		}
 
-		currentPixel -= 4 * width;
+		currentPixel -= width;
 		currentPixel += pitch;
 	}
 }
@@ -98,18 +98,19 @@ void DrawBorderRect(WindowData* windowData, int2 bottomLeft, int2 size, int line
 {
 	// bottom
 	DrawRect(windowData, bottomLeft.x, bottomLeft.y, size.x, lineWidth, color);
-	
+
 	// top
 	DrawRect(windowData, bottomLeft.x, bottomLeft.y + size.y - lineWidth, size.x, lineWidth, color);
 
 	// left
 	DrawRect(windowData, bottomLeft.x, bottomLeft.y, lineWidth, size.y, color);
-	
+
 	// right
 	DrawRect(windowData, bottomLeft.x + size.x - lineWidth, bottomLeft.y, lineWidth, size.y, color);
 }
 
 // TODO: current algorithm is to slow
+// Bresenham’s algorithm implementation
 void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color)
 {
 	Queue<int2> queue = Queue<int2>(5);
@@ -159,24 +160,30 @@ void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color)
 
 inline ubyte3 GetPixelColor(WindowData* windowData, int x, int y)
 {
-	ubyte* currentPixel = windowData->bitmap + 4 * (x + windowData->clientSize.x * y);
+	ubyte4 currentPixel = *(windowData->bitmap + (x + windowData->clientSize.x * y));
 
 	return {
-		*(currentPixel + 2),
-		*(currentPixel + 1),
-		*currentPixel
+		currentPixel.x,
+		currentPixel.y,
+		currentPixel.z
 	};
 }
 
 inline void DrawPixel(WindowData* windowData, int x, int y, ubyte3 color)
 {
-	ubyte* currentPixel = windowData->bitmap + 4 * (x + windowData->clientSize.x * y);
+	ubyte4* currentPixel = windowData->bitmap + (x + windowData->clientSize.x * y);
 
-	*currentPixel = color.z; // b
-	currentPixel++;
+	*currentPixel = ubyte4(color.z, color.y, color.x, 0);
+}
 
-	*currentPixel = color.y; //g
-	currentPixel++;
-
-	*currentPixel = color.x; // r
+void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 topLeft, int2 bitmapSize)
+{
+	for (int y = 0; y < bitmapSize.y; y++)
+	{
+		for (int x = 0; x < bitmapSize.x; x++)
+		{
+			windowData->bitmap[topLeft.x + x + (topLeft.y + y) * windowData->clientSize.x] 
+				= bitmapToCopy[x + y * bitmapSize.x];
+		}
+	}
 }

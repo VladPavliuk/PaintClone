@@ -29,3 +29,6 @@ bool DrawButton(
 
 void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<ubyte3>* colors, int2 bottomLeft,
 	int2 singleColorTileSize, int xDistanceToNextColor);
+
+void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
+	int2 singleToolTileSize, int yDistanceToNextToolTile);
