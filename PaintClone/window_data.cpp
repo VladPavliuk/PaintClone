@@ -27,6 +27,7 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 		windowData->isRightButtonHold = false;
+		windowData->isDrawing = false;
 		break;
 	}
 	case WM_LBUTTONDOWN:
@@ -34,20 +35,33 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 		windowData->isRightButtonHold = true;
+
+		ubyte2 zAndId = *(windowData->zAndIdBuffer + (windowData->mousePosition.x + windowData->clientSize.x * windowData->mousePosition.y));
+
+		// NOTE: only drawing canvas has zero id in z buffer, so only when we have initial click on actual canvas, we allow drawing
+		if (zAndId.y == 0)
+		{
+			windowData->isDrawing = true;
+		}
 		break;
 	}
 	case WM_MOUSEMOVE:
 	{
-		if (wParam == 0x0001)
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		int xMouse = GET_X_LPARAM(lParam);
+		int yMouse = GET_Y_LPARAM(lParam);
+
+		yMouse = windowData->clientSize.y - yMouse;
+
+		windowData->mousePosition = { xMouse, yMouse };
+
+		if (wParam == MK_LBUTTON)
 		{
-			WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-
-			int xMouse = GET_X_LPARAM(lParam);
-			int yMouse = GET_Y_LPARAM(lParam);
-
-			yMouse = windowData->clientSize.y - yMouse;
-
-			windowData->pixelsToDraw.add({ xMouse, yMouse });
+			if (windowData->isDrawing)
+			{
+				windowData->pixelsToDraw.add(windowData->mousePosition);
+			}
 
 			//int pixelIndex = 4 * (xMouse + yMouse * windowData->clientSize.x);
 			//windowData->bitmap[pixelIndex] = 130;

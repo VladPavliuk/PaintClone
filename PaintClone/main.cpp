@@ -1,4 +1,6 @@
-#include "renderer.h"
+//#include "renderer.h"
+#include "ui.h"
+#include <stdio.h>
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, int windowMode)
 {
@@ -15,6 +17,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	windowData.pixelsToDraw = SimpleDynamicArray<int2>(2);
 	windowData.fillFrom = { -1, -1 };
 	windowData.isRightButtonHold = false;
+	windowData.mousePosition = { 0,0 };
+	windowData.selectedColor = { 0,0,0 };
 
 	HWND hwnd = CreateWindowExW(
 		0,
@@ -37,8 +41,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 	FillWindowClientWithWhite(&windowData);
 
+	SimpleDynamicArray<ubyte3> colors = SimpleDynamicArray<ubyte3>(10);
+	colors.add({ 0, 0, 0 });
+	colors.add({ 255, 255, 255 });
+	colors.add({ 255, 0, 0 });
+	colors.add({ 0, 255, 0 });
+	colors.add({ 0, 0, 255 });
+	colors.add({ 255, 255, 0 });
+	colors.add({ 0, 255, 255 });
+	colors.add({ 255, 0, 255 });
 	//DrawLine(&windowData, { 500,500 }, { 100,100 });
-	DrawRect(&windowData, 130, 100, 50, 30, { (ubyte)12,(ubyte)12,(ubyte)12 });
+	//DrawRect(&windowData, 0, 0, 50, 30, { (ubyte)12,(ubyte)12,(ubyte)12 });
+
+	//DrawBorderRect(&windowData, {0,0}, { 100,100 }, 2, { 120,120,49 });
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
@@ -55,7 +70,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			int2 fromPixel = windowData.pixelsToDraw.get(0);
 			int2 toPixel = windowData.pixelsToDraw.get(1);
 
-			DrawLine(&windowData, fromPixel, toPixel);
+			DrawLine(&windowData, fromPixel, toPixel, windowData.selectedColor);
 
 			//windowData.pixelsToDraw.remove(1);
 			windowData.pixelsToDraw.remove(0);
@@ -67,13 +82,34 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		}
 		//<
 
+		//> filling
 		if (windowData.fillFrom.x != -1)
 		{
-			FillFromPixel(&windowData, windowData.fillFrom, { (ubyte)200,0,0 });
+			FillFromPixel(&windowData, windowData.fillFrom, { 200,0,0 });
 			windowData.fillFrom.x = -1;
 		}
+		//<
 
-		// drawing
+		// ui
+		DrawColorsBrush(&windowData, &colors, { 5, 5 },
+			{ 15,15 }, 5);
+		/*if (DrawButton(&windowData, { 5,5 }, { 15,15 }, { 255,0,0 }, { 255,0,0 }, 1, 1))
+		{
+			windowData.selectedColor = { 255,0,0 };
+		}
+		if (DrawButton(&windowData, { 25,5 }, { 15,15 }, { 0,255,0 }, { 0,255,0 }, 1, 2))
+		{
+			windowData.selectedColor = { 0,255,0 };
+		}
+		if (DrawButton(&windowData, { 45,5 }, { 15,15 }, { 0,0,255 }, { 0,0,255 }, 1, 3))
+		{
+			windowData.selectedColor = { 0,0,255 };
+		}*/
+
+		//char buff[100];
+		////sprintf_s(buff, "x: %i. y: %i\n", windowData.mousePosition.x, windowData.mousePosition.y);
+		//sprintf_s(buff, "id: %i\n", windowData.uiIdClicked);
+		//OutputDebugStringA(buff);
 
 		StretchDIBits(
 			windowData.deviceContext,
@@ -85,6 +121,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		);
 	}
 
+	colors.freeMemory();
 	ReleaseDC(hwnd, windowData.deviceContext);
 
 	return 0;

@@ -25,6 +25,9 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	// create actual bitmap with r,g,b,_
 	windowData->bitmap = (ubyte*)malloc(4 * windowData->clientSize.x * windowData->clientSize.y);
 	//ZeroMemory(windowData->bitmap, 4 * windowData->clientSize.x * windowData->clientSize.y);
+
+	windowData->zAndIdBuffer = (ubyte2*)malloc(2 * windowData->clientSize.x * windowData->clientSize.y);
+	ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->clientSize.x * windowData->clientSize.y);
 }
 
 void FillWindowClientWithWhite(WindowData* windowData)
@@ -36,7 +39,7 @@ void FillWindowClientWithWhite(WindowData* windowData)
 	}
 }
 
-void DrawLine(WindowData* windowData, int2 from, int2 to)
+void DrawLine(WindowData* windowData, int2 from, int2 to, ubyte3 color)
 {
 	float dx = abs(to.x - from.x);
 	float dy = -abs(to.y - from.y);
@@ -48,7 +51,7 @@ void DrawLine(WindowData* windowData, int2 from, int2 to)
 
 	while (from.x != to.x || from.y != to.y)
 	{
-		DrawPixel(windowData, from.x, from.y, { (ubyte)0,(ubyte)0,(ubyte)0 });
+		DrawPixel(windowData, from.x, from.y, color);
 		float e2 = 2 * error;
 
 		if (e2 >= dy)
@@ -89,6 +92,21 @@ void DrawRect(WindowData* windowData, int x, int y, int width, int height, ubyte
 		currentPixel -= 4 * width;
 		currentPixel += pitch;
 	}
+}
+
+void DrawBorderRect(WindowData* windowData, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color)
+{
+	// bottom
+	DrawRect(windowData, bottomLeft.x, bottomLeft.y, size.x, lineWidth, color);
+	
+	// top
+	DrawRect(windowData, bottomLeft.x, bottomLeft.y + size.y - lineWidth, size.x, lineWidth, color);
+
+	// left
+	DrawRect(windowData, bottomLeft.x, bottomLeft.y, lineWidth, size.y, color);
+	
+	// right
+	DrawRect(windowData, bottomLeft.x + size.x - lineWidth, bottomLeft.y, lineWidth, size.y, color);
 }
 
 // TODO: current algorithm is to slow

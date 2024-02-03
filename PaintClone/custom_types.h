@@ -20,3 +20,9 @@ struct ubyte3
 	ubyte y;
 	ubyte z;
 };
+
+struct ubyte2
+{
+	ubyte x;
+	ubyte y;
+};
