@@ -12,3 +12,11 @@ struct char3
 	char y;
 	char z;
 };
+
+typedef unsigned char ubyte;
+struct ubyte3
+{
+	ubyte x;
+	ubyte y;
+	ubyte z;
+};

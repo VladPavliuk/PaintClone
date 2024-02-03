@@ -12,6 +12,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 	WindowData windowData;
 
+	windowData.pixelsToDraw = SimpleDynamicArray<int2>(2);
+	windowData.fillFrom = { -1, -1 };
+
 	HWND hwnd = CreateWindowExW(
 		0,
 		windowClass.lpszClassName,
@@ -32,7 +35,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	InitRenderer(&windowData, hwnd);
 
 	FillWindowClientWithWhite(&windowData);
-	DrawRect(&windowData, 130, 100, 50, 30, { (char)12,(char)12,(char)12 });
+
+	//DrawLine(&windowData, { 500,500 }, { 100,100 });
+	DrawRect(&windowData, 130, 100, 50, 30, { (ubyte)12,(ubyte)12,(ubyte)12 });
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
@@ -41,6 +46,23 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 			continue;
+		}
+
+		if (windowData.pixelsToDraw.length > 1)
+		{
+			int2 fromPixel = windowData.pixelsToDraw.get(0);
+			int2 toPixel = windowData.pixelsToDraw.get(1);
+
+			DrawLine(&windowData, fromPixel, toPixel);
+
+			//windowData.pixelsToDraw.remove(1);
+			windowData.pixelsToDraw.remove(0);
+		}
+
+		if (windowData.fillFrom.x != -1)
+		{
+			FillFromPixel(&windowData, windowData.fillFrom, { (ubyte)200,0,0 });
+			windowData.fillFrom.x = -1;
 		}
 
 		// drawing

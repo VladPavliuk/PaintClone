@@ -141,6 +141,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="custom_types.h" />
+    <ClInclude Include="dynamic_array.h" />
+    <ClInclude Include="queue.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="window_data.h" />
   </ItemGroup>
