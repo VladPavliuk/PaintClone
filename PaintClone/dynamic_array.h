@@ -66,6 +66,17 @@ struct SimpleDynamicArray
 		length--;
 	}
 
+	void clean()
+	{
+		if (length == 0)
+		{
+			return;
+		}
+
+		ZeroMemory(_elements, _singleElementSize * length);
+		length = 0;
+	}
+
 	void freeMemory()
 	{
 		free(_elements);

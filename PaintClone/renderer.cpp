@@ -9,7 +9,6 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	windowData->clientSize.x = clientRect.right - clientRect.left;
 	windowData->clientSize.y = clientRect.bottom - clientRect.top;
 
-	BITMAPINFOHEADER header;
 	windowData->bitmapInfo.bmiHeader.biSize = sizeof(windowData->bitmapInfo.bmiHeader);
 	windowData->bitmapInfo.bmiHeader.biWidth = windowData->clientSize.x;
 	windowData->bitmapInfo.bmiHeader.biHeight = windowData->clientSize.y;

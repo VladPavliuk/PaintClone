@@ -15,6 +15,8 @@ struct WindowData
 
 	int2 clientSize;
 
+	bool isRightButtonHold;
+
 	SimpleDynamicArray<int2> pixelsToDraw;
 	int2 fillFrom;
 };

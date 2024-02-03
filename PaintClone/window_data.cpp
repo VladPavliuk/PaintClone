@@ -20,7 +20,21 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		yMouse = windowData->clientSize.y - yMouse;
 
 		windowData->fillFrom = { xMouse, yMouse };
+		break;
+	}
+	case WM_LBUTTONUP:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
+		windowData->isRightButtonHold = false;
+		break;
+	}
+	case WM_LBUTTONDOWN:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		windowData->isRightButtonHold = true;
+		break;
 	}
 	case WM_MOUSEMOVE:
 	{

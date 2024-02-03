@@ -14,6 +14,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 	windowData.pixelsToDraw = SimpleDynamicArray<int2>(2);
 	windowData.fillFrom = { -1, -1 };
+	windowData.isRightButtonHold = false;
 
 	HWND hwnd = CreateWindowExW(
 		0,
@@ -48,6 +49,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			continue;
 		}
 
+		//> pencil drawing
 		if (windowData.pixelsToDraw.length > 1)
 		{
 			int2 fromPixel = windowData.pixelsToDraw.get(0);
@@ -58,6 +60,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			//windowData.pixelsToDraw.remove(1);
 			windowData.pixelsToDraw.remove(0);
 		}
+
+		if (!windowData.isRightButtonHold)
+		{
+			windowData.pixelsToDraw.clean();
+		}
+		//<
 
 		if (windowData.fillFrom.x != -1)
 		{
