@@ -135,14 +135,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="bmp_images.cpp" />
+    <ClCompile Include="files.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="ui.cpp" />
     <ClCompile Include="window_data.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bmp_images.h" />
     <ClInclude Include="custom_types.h" />
     <ClInclude Include="dynamic_array.h" />
+    <ClInclude Include="files.h" />
     <ClInclude Include="queue.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="ui.h" />

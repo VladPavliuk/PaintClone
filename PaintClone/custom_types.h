@@ -42,3 +42,6 @@ struct ubyte2
 	ubyte x;
 	ubyte y;
 };
+
+typedef unsigned short ushort;
+typedef unsigned int uint;

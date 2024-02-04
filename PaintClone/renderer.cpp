@@ -23,7 +23,7 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	//windowData->bitmapInfo.bmiColors = 0;
 
 	// create actual bitmap with r,g,b,_
-	windowData->bitmap = (ubyte4*)malloc(4 * windowData->clientSize.x * windowData->clientSize.y);
+	windowData->uiBitmap = (ubyte4*)malloc(4 * windowData->clientSize.x * windowData->clientSize.y);
 	//ZeroMemory(windowData->bitmap, 4 * windowData->clientSize.x * windowData->clientSize.y);
 
 	windowData->zAndIdBuffer = (ubyte2*)malloc(2 * windowData->clientSize.x * windowData->clientSize.y);
@@ -35,7 +35,7 @@ void FillWindowClientWithWhite(WindowData* windowData)
 	int length = windowData->clientSize.x * windowData->clientSize.y;
 	for (int i = 0; i < length; i++)
 	{
-		windowData->bitmap[i] = ubyte4(255, 255, 255, 0);
+		windowData->uiBitmap[i] = ubyte4(255, 255, 255, 0);
 	}
 }
 
@@ -69,7 +69,7 @@ void DrawLine(WindowData* windowData, int2 from, int2 to, ubyte3 color)
 
 void DrawRect(WindowData* windowData, int x, int y, int width, int height, ubyte3 color)
 {
-	ubyte4* currentPixel = windowData->bitmap + (x + windowData->clientSize.x * y);
+	ubyte4* currentPixel = windowData->uiBitmap + (x + windowData->clientSize.x * y);
 	int pitch = windowData->clientSize.x;
 
 	for (int i = 0; i < height; i++)
@@ -77,15 +77,6 @@ void DrawRect(WindowData* windowData, int x, int y, int width, int height, ubyte
 		for (int j = 0; j < width; j++)
 		{
 			*currentPixel = ubyte4(color.z, color.y, color.x, 0);
-			//currentPixel++;
-
-			//*currentPixel = color.y; //g
-			//currentPixel++;
-
-			//*currentPixel = color.x; // r
-			//currentPixel++;
-
-			//*currentPixel = 0;
 			currentPixel++;
 		}
 
@@ -160,7 +151,7 @@ void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color)
 
 inline ubyte3 GetPixelColor(WindowData* windowData, int x, int y)
 {
-	ubyte4 currentPixel = *(windowData->bitmap + (x + windowData->clientSize.x * y));
+	ubyte4 currentPixel = *(windowData->uiBitmap + (x + windowData->clientSize.x * y));
 
 	return {
 		currentPixel.x,
@@ -171,18 +162,18 @@ inline ubyte3 GetPixelColor(WindowData* windowData, int x, int y)
 
 inline void DrawPixel(WindowData* windowData, int x, int y, ubyte3 color)
 {
-	ubyte4* currentPixel = windowData->bitmap + (x + windowData->clientSize.x * y);
+	ubyte4* currentPixel = windowData->uiBitmap + (x + windowData->clientSize.x * y);
 
 	*currentPixel = ubyte4(color.z, color.y, color.x, 0);
 }
 
-void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 topLeft, int2 bitmapSize)
+void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 bottomLeft, int2 bitmapSize)
 {
 	for (int y = 0; y < bitmapSize.y; y++)
 	{
 		for (int x = 0; x < bitmapSize.x; x++)
 		{
-			windowData->bitmap[topLeft.x + x + (topLeft.y + y) * windowData->clientSize.x] 
+			windowData->uiBitmap[bottomLeft.x + x + (bottomLeft.y + y) * windowData->clientSize.x] 
 				= bitmapToCopy[x + y * bitmapSize.x];
 		}
 	}

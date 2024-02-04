@@ -6,6 +6,7 @@
 #include "custom_types.h"
 #include "dynamic_array.h"
 #include "queue.h"
+#include "bmp_images.h"
 
 enum class DRAW_TOOL
 {
@@ -18,8 +19,8 @@ struct WindowData
 {
 	HDC deviceContext;
 	BITMAPINFO bitmapInfo;
-	ubyte4* bitmap;
-	
+	ubyte4* uiBitmap;
+
 	// (first byte for z index, second byte for id) of a ui element
 	ubyte2* zAndIdBuffer;
 
@@ -29,12 +30,16 @@ struct WindowData
 
 	bool isRightButtonHold;
 
-	int isDrawing;
+	bool isDrawing;
 
 	DRAW_TOOL selectedTool;
+	SimpleDynamicArray<BmpImage> toolsImages;
+
 	ubyte3 selectedColor;
+	SimpleDynamicArray<ubyte3> colorsInBrush;
+
 	SimpleDynamicArray<int2> pixelsToDraw;
 	int2 oneTimeClick;
 };
 
-LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+//LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);

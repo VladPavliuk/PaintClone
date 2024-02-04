@@ -3,7 +3,7 @@
 #include "renderer.h"
 
 void DrawRectToZAndIdBuffer(WindowData* windowData,
-	int2 topLeft,
+	int2 bottomLeft,
 	int2 size,
 	ubyte zIndex,
 	ubyte uiId);
@@ -17,6 +17,12 @@ void DrawPanel(
 	ubyte3 bgColor,
 	ubyte zIndex,
 	ubyte uiId);
+
+bool DrawBitmapButton(WindowData* windowData,
+	int2 bottomLeft, int2 size,
+	ubyte4* bitmap,
+	ubyte3 hoveredBgColor,
+	ubyte zIndex, ubyte uiId);
 
 bool DrawButton(
 	WindowData* windowData,

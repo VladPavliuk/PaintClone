@@ -41,6 +41,18 @@ struct SimpleDynamicArray
 		length++;
 	}
 
+	void set(int index, T item)
+	{
+		assert(index < _capacity);
+		assert(index >= 0);
+
+		if (index >= length)
+		{
+			length = index + 1;
+		}
+		_elements[index] = item;
+	}
+
 	T get(int index)
 	{
 		assert(index < length);
