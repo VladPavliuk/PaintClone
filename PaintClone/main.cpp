@@ -38,7 +38,7 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		windowData->isRightButtonHold = true;
 
-		ubyte2 zAndId = *(windowData->zAndIdBuffer + (windowData->mousePosition.x + windowData->clientSize.x * windowData->mousePosition.y));
+		ubyte2 zAndId = *(windowData->zAndIdBuffer + (windowData->mousePosition.x + windowData->windowClientSize.x * windowData->mousePosition.y));
 
 		// NOTE: only drawing canvas has zero id in z buffer, so only when we have initial click on actual canvas, we allow drawing
 		if (zAndId.y == 0)
@@ -85,19 +85,29 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		int xMouse = GET_X_LPARAM(lParam);
 		int yMouse = GET_Y_LPARAM(lParam);
 
-		yMouse = windowData->clientSize.y - yMouse;
+		yMouse = windowData->windowClientSize.y - yMouse;
 
 		windowData->mousePosition = { xMouse, yMouse };
 
 		if (wParam == MK_LBUTTON && windowData->isDrawing)
 		{
-			switch (windowData->selectedTool)
+			if (windowData->mousePosition.x >= windowData->drawingBitmapBottomLeft.x
+				&& windowData->mousePosition.y >= windowData->drawingBitmapBottomLeft.y
+				&& windowData->mousePosition.x < windowData->drawingBitmapBottomLeft.x + windowData->drawingBitmapSize.x
+				&& windowData->mousePosition.y < windowData->drawingBitmapBottomLeft.y + windowData->drawingBitmapSize.y)
 			{
-			case DRAW_TOOL::PENCIL:
-			{
-				windowData->pixelsToDraw.add(windowData->mousePosition);
-				break;
+				switch (windowData->selectedTool)
+				{
+				case DRAW_TOOL::PENCIL:
+				{
+					windowData->pixelsToDraw.add(windowData->mousePosition);
+					break;
+				}
+				}
 			}
+			else
+			{
+				windowData->pixelsToDraw.clean();
 			}
 		}
 
@@ -109,35 +119,36 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		RECT clientRect;
 		GetClientRect(hwnd, &clientRect);
-		windowData->clientSize.x = clientRect.right - clientRect.left;
-		windowData->clientSize.y = clientRect.bottom - clientRect.top;
+		windowData->windowClientSize.x = clientRect.right - clientRect.left;
+		windowData->windowClientSize.y = clientRect.bottom - clientRect.top;
 
-		if (windowData->uiBitmap)
+		if (windowData->windowBitmap)
 		{
 			/*free(windowData->bitmap);
 			free(windowData->zAndIdBuffer);*/
-			windowData->uiBitmap = (ubyte4*)realloc(windowData->uiBitmap, 4 * windowData->clientSize.x * windowData->clientSize.y);
+			windowData->windowBitmap = (ubyte4*)realloc(windowData->windowBitmap, 4 * windowData->windowClientSize.x * windowData->windowClientSize.y);
+			FillWindowClientWithWhite(windowData->windowBitmap, windowData->windowClientSize);
 
-			windowData->zAndIdBuffer = (ubyte2*)realloc(windowData->zAndIdBuffer, 2 * windowData->clientSize.x * windowData->clientSize.y);
-			ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->clientSize.x * windowData->clientSize.y);
-
+			windowData->zAndIdBuffer = (ubyte2*)realloc(windowData->zAndIdBuffer, 2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
+			ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
 		}
 		else
 		{
-			windowData->uiBitmap = (ubyte4*)malloc(4 * windowData->clientSize.x * windowData->clientSize.y);
+			windowData->windowBitmap = (ubyte4*)malloc(4 * windowData->windowClientSize.x * windowData->windowClientSize.y);
+			FillWindowClientWithWhite(windowData->windowBitmap, windowData->windowClientSize);
 
-			windowData->zAndIdBuffer = (ubyte2*)malloc(2 * windowData->clientSize.x * windowData->clientSize.y);
-			ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->clientSize.x * windowData->clientSize.y);
+			windowData->zAndIdBuffer = (ubyte2*)malloc(2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
+			ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
 		}
 
-		windowData->bitmapInfo.bmiHeader.biWidth = windowData->clientSize.x;
-		windowData->bitmapInfo.bmiHeader.biHeight = windowData->clientSize.y;
+		windowData->windowBitmapInfo.bmiHeader.biWidth = windowData->windowClientSize.x;
+		windowData->windowBitmapInfo.bmiHeader.biHeight = windowData->windowClientSize.y;
 
-		if (windowData->mousePosition.x >= windowData->clientSize.x)
+		if (windowData->mousePosition.x >= windowData->windowClientSize.x)
 		{
 			windowData->mousePosition.x = windowData->mousePosition.x;
 		}
-		if (windowData->mousePosition.y >= windowData->clientSize.y)
+		if (windowData->mousePosition.y >= windowData->windowClientSize.y)
 		{
 			windowData->mousePosition.y = windowData->mousePosition.y;
 		}
@@ -151,10 +162,10 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		StretchDIBits(
 			windowData->deviceContext,
-			0, 0, windowData->clientSize.x, windowData->clientSize.y,
-			0, 0, windowData->clientSize.x, windowData->clientSize.y,
-			windowData->uiBitmap,
-			&windowData->bitmapInfo,
+			0, 0, windowData->windowClientSize.x, windowData->windowClientSize.y,
+			0, 0, windowData->windowClientSize.x, windowData->windowClientSize.y,
+			windowData->windowBitmap,
+			&windowData->windowBitmapInfo,
 			DIB_RGB_COLORS, SRCCOPY
 		);
 		break;
@@ -183,7 +194,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 	WindowData windowData;
 
-	windowData.uiBitmap = NULL;
+	windowData.windowBitmap = NULL;
+
+	windowData.drawingBitmap = NULL;
+	windowData.drawingBitmapSize = { 1200, 600 };
+	windowData.drawingBitmapBottomLeft = { 25, 25 };
+
 	windowData.pixelsToDraw = SimpleDynamicArray<int2>(2);
 	windowData.oneTimeClick = { -1, -1 };
 	windowData.isRightButtonHold = false;
@@ -211,7 +227,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	UpdateWindow(hwnd);
 	InitRenderer(&windowData, hwnd);
 
-	FillWindowClientWithWhite(&windowData);
+	FillWindowClientWithWhite(windowData.windowBitmap, windowData.windowClientSize);
 
 	windowData.toolsImages = SimpleDynamicArray<BmpImage>(10);
 	windowData.toolsImages.set((int)DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp"));
@@ -237,6 +253,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 	//DrawBitmap(&windowData, bmpTestImage.rgbaBitmap, { 300,300 }, bmpTestImage.size);
 	//DrawBorderRect(&windowData, {0,0}, { 100,100 }, 2, { 120,120,49 });
+
+	//DrawBorderRect(&windowData, { 500, 10 }, { 100, 10 }, 4, { 0,0,0 });
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
@@ -259,7 +277,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 					int2 fromPixel = windowData.pixelsToDraw.get(0);
 					int2 toPixel = windowData.pixelsToDraw.get(1);
 
-					DrawLine(&windowData, fromPixel, toPixel, windowData.selectedColor);
+					fromPixel.x -= windowData.drawingBitmapBottomLeft.x;
+					fromPixel.y -= windowData.drawingBitmapBottomLeft.y;
+
+					toPixel.x -= windowData.drawingBitmapBottomLeft.x;
+					toPixel.y -= windowData.drawingBitmapBottomLeft.y;
+
+					DrawLine(windowData.drawingBitmap, windowData.drawingBitmapSize, fromPixel, toPixel, windowData.selectedColor);
 
 					//windowData.pixelsToDraw.remove(1);
 					windowData.pixelsToDraw.remove(0);
@@ -274,6 +298,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 				//> filling
 				if (windowData.oneTimeClick.x != -1)
 				{
+					windowData.oneTimeClick.x -= windowData.drawingBitmapBottomLeft.x;
+					windowData.oneTimeClick.y -= windowData.drawingBitmapBottomLeft.y;
+					
 					FillFromPixel(&windowData, windowData.oneTimeClick, windowData.selectedColor);
 					windowData.oneTimeClick = { -1,-1 };
 				}
@@ -293,19 +320,53 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 		DrawToolsPanel(&windowData, { 5, 30 }, { 15, 15 }, 5);
 
-		//char buff[100];
-		////sprintf_s(buff, "x: %i. y: %i\n", windowData.mousePosition.x, windowData.mousePosition.y);
-		//sprintf_s(buff, "id: %i\n", windowData.uiIdClicked);
-		//OutputDebugStringA(buff);
+		//> draw panel in which drawing bitmap is rendered
+		int width = windowData.drawingBitmapSize.x + 4;
+		int height = windowData.drawingBitmapSize.y + 4;
+
+		if (width > windowData.windowClientSize.x - windowData.drawingBitmapBottomLeft.x)
+		{
+			width = windowData.windowClientSize.x - windowData.drawingBitmapBottomLeft.x;
+		}
+		
+		if (height > windowData.windowClientSize.y - windowData.drawingBitmapBottomLeft.y)
+		{
+			height = windowData.windowClientSize.y - windowData.drawingBitmapBottomLeft.y;
+		}
+
+		DrawBorderRect(&windowData, { windowData.drawingBitmapBottomLeft.x - 2, windowData.drawingBitmapBottomLeft.y - 2 },
+			{ width, height}, 2, { 255,0,0 });
+		//<
+
+		/*DrawRectToZAndIdBuffer(windowData,
+			bottomLeft, size,
+			zIndex, uiId);*/
+
+			//char buff[100];
+			////sprintf_s(buff, "x: %i. y: %i\n", windowData.mousePosition.x, windowData.mousePosition.y);
+			//sprintf_s(buff, "id: %i\n", windowData.uiIdClicked);
+			//OutputDebugStringA(buff);
+
+		CopyBitmapToBitmap(windowData.drawingBitmap, windowData.drawingBitmapSize,
+			windowData.windowBitmap, windowData.drawingBitmapBottomLeft, windowData.windowClientSize);
 
 		StretchDIBits(
 			windowData.deviceContext,
-			0, 0, windowData.clientSize.x, windowData.clientSize.y,
-			0, 0, windowData.clientSize.x, windowData.clientSize.y,
-			windowData.uiBitmap,
-			&windowData.bitmapInfo,
+			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
+			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
+			windowData.windowBitmap,
+			&windowData.windowBitmapInfo,
 			DIB_RGB_COLORS, SRCCOPY
 		);
+
+		/*StretchDIBits(
+			windowData.deviceContext,
+			25, windowData.windowClientSize.y - windowData.drawingBitmapSize.y - 25, windowData.drawingBitmapSize.x, windowData.drawingBitmapSize.y,
+			0, 0, windowData.drawingBitmapSize.x, windowData.drawingBitmapSize.y,
+			windowData.drawingBitmap,
+			&windowData.drawingBitmapInfo,
+			DIB_RGB_COLORS, SRCCOPY
+		);*/
 
 	}
 

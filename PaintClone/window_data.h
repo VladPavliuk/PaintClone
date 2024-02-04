@@ -18,13 +18,18 @@ enum class DRAW_TOOL
 struct WindowData
 {
 	HDC deviceContext;
-	BITMAPINFO bitmapInfo;
-	ubyte4* uiBitmap;
+	BITMAPINFO windowBitmapInfo;
+	ubyte4* windowBitmap;
+
+	BITMAPINFO drawingBitmapInfo;
+	ubyte4* drawingBitmap;
+	int2 drawingBitmapSize;
+	int2 drawingBitmapBottomLeft; // relative to client rect
 
 	// (first byte for z index, second byte for id) of a ui element
 	ubyte2* zAndIdBuffer;
 
-	int2 clientSize;
+	int2 windowClientSize;
 
 	int2 mousePosition;
 

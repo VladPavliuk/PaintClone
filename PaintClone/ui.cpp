@@ -6,8 +6,8 @@ void DrawRectToZAndIdBuffer(WindowData* windowData,
 	ubyte zIndex,
 	ubyte uiId)
 {
-	ubyte2* currentElement = windowData->zAndIdBuffer + (bottomLeft.x + windowData->clientSize.x * bottomLeft.y);
-	int pitch = windowData->clientSize.x;
+	ubyte2* currentElement = windowData->zAndIdBuffer + (bottomLeft.x + windowData->windowClientSize.x * bottomLeft.y);
+	int pitch = windowData->windowClientSize.x;
 
 	for (int i = 0; i < size.y; i++)
 	{
@@ -25,12 +25,12 @@ void DrawRectToZAndIdBuffer(WindowData* windowData,
 
 ubyte2 GetZAndIdFromBuffer(WindowData* windowData, int2 position)
 {
-	if (position.x < 0 || position.y < 0 || position.x >= windowData->clientSize.x || position.y >= windowData->clientSize.y)
+	if (position.x < 0 || position.y < 0 || position.x >= windowData->windowClientSize.x || position.y >= windowData->windowClientSize.y)
 	{
 		return { 0, 0 };
 	}
 
-	return *(windowData->zAndIdBuffer + (position.x + windowData->clientSize.x * position.y));
+	return *(windowData->zAndIdBuffer + (position.x + windowData->windowClientSize.x * position.y));
 }
 
 void DrawPanel(WindowData* windowData,
