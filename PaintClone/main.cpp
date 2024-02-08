@@ -189,12 +189,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		double timeDelta = GetCurrentTimestamp(&windowData);
 
 		FillWindowClientWithWhite(windowData.windowBitmap, windowData.windowClientSize);
-
-		timeDelta = GetCurrentTimestamp(&windowData) - timeDelta;
-
-		char buff[100];
-		sprintf_s(buff, "time: %f\n", timeDelta);
-		//OutputDebugStringA(buff);
 		
 		// ui
 		DrawColorsBrush(&windowData, &windowData.brushColorTiles, { 5, 5 }, { 15, 15 }, 5);
@@ -220,8 +214,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		BitBlt(windowData.windowDC,
 			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
 			windowData.backgroundDC, 0, 0, SRCCOPY);
-		deltasSum += timeDelta;
-		framesCount++;
 
 		// NOTE: at the end of frame we should clean mouse buttons state
 		// otherwise we might get overspaming behaviour
@@ -231,9 +223,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		HandleUiElements(&windowData);
 		windowData.prevMousePosition = windowData.mousePosition;
 		windowData.prevHotUi = windowData.hotUi;
+
+		timeDelta = GetCurrentTimestamp(&windowData) - timeDelta;
+		char buff[100];
+		sprintf_s(buff, "frame time: %f ml sec.\n", timeDelta * 1000.0f);
+		OutputDebugStringA(buff);
+		deltasSum += timeDelta;
+		framesCount++;
 	}
 
+	// 08.02.2024 average frame time - 2.21 ml sec (without charged connected to the laptop).
 	double averageDelta = deltasSum / framesCount;
+	char buff2[100];
+	sprintf_s(buff2, "AVERAGE FRAME TIME: %f ml sec.\n", averageDelta * 1000.0f);
+	OutputDebugStringA(buff2);
 
 	DeleteDC(windowData.backgroundDC);
 	ReleaseDC(hwnd, windowData.windowDC);
