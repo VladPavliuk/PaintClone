@@ -1,13 +1,35 @@
 #include "renderer.h"
 
+void RecreateBackgroundBmp(WindowData* windowData)
+{
+	if (windowData->backgroundBmp)
+	{
+		DeleteObject(windowData->backgroundBmp);
+	}
+
+	windowData->backgroundBmp = CreateDIBSection(0, &windowData->windowBitmapInfo,
+		DIB_RGB_COLORS, (void**)&windowData->windowBitmap, NULL, 0x0);
+
+	SelectObject(windowData->backgroundDC, windowData->backgroundBmp);
+
+	//TODO: Find a faster way to fill default color
+	FillWindowClientWithWhite(windowData->windowBitmap, windowData->windowClientSize);
+}
+
 void InitRenderer(WindowData* windowData, HWND hwnd)
 {
-	windowData->deviceContext = GetDC(hwnd);
+	windowData->windowDC = GetDC(hwnd);
+	windowData->backgroundDC = CreateCompatibleDC(windowData->windowDC);
 
 	RECT clientRect;
 	GetClientRect(hwnd, &clientRect);
 	windowData->windowClientSize.x = clientRect.right - clientRect.left;
 	windowData->windowClientSize.y = clientRect.bottom - clientRect.top;
+
+	//> automatically select drawing bitmap based on initial window size
+	windowData->drawingBitmapSize.x = windowData->windowClientSize.x - windowData->drawingZonePosition.x;
+	windowData->drawingBitmapSize.y = windowData->windowClientSize.y - windowData->drawingZonePosition.y;
+	//<
 
 	windowData->windowBitmapInfo.bmiHeader.biSize = sizeof(windowData->windowBitmapInfo.bmiHeader);
 	windowData->windowBitmapInfo.bmiHeader.biWidth = windowData->windowClientSize.x;
@@ -23,11 +45,11 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	//windowData->bitmapInfo.bmiColors = 0;
 
 	// create window bitmap with r,g,b,_
-	windowData->windowBitmap = (ubyte4*)malloc(4 * windowData->windowClientSize.x * windowData->windowClientSize.y);
+	//windowData->windowBitmap = (ubyte4*)malloc(4 * windowData->windowClientSize.x * windowData->windowClientSize.y);
 	//ZeroMemory(windowData->bitmap, 4 * windowData->clientSize.x * windowData->clientSize.y);
 
-	windowData->zAndIdBuffer = (ubyte2*)malloc(2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
-	ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
+	/*windowData->zAndIdBuffer = (ubyte2*)malloc(2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
+	ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->windowClientSize.x * windowData->windowClientSize.y);*/
 
 	windowData->drawingBitmapInfo.bmiHeader.biSize = sizeof(windowData->drawingBitmapInfo.bmiHeader);
 	windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->drawingBitmapSize.x;
@@ -41,22 +63,83 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	windowData->drawingBitmapInfo.bmiHeader.biClrUsed = 0;
 	windowData->drawingBitmapInfo.bmiHeader.biClrImportant = 0;
 
+	//windowData->drawingZonePosition.x;
+	//windowData->drawingZonePosition.y;
+	
 	windowData->drawingBitmap = (ubyte4*)malloc(4 * windowData->drawingBitmapSize.x * windowData->drawingBitmapSize.y);
+	FillWindowClientWithWhite(windowData->drawingBitmap, windowData->drawingBitmapSize);
+
+	RecreateBackgroundBmp(windowData);
+	CalculateDrawingZone(windowData);
+
+	SelectObject(windowData->windowDC, windowData->backgroundBmp);
+}
+
+void ValidateDrawingOffset(WindowData* windowData)
+{
+	if (windowData->drawingOffset.y < 0)
+	{
+		windowData->drawingOffset.y = 0;
+	}
+	else
+	{
+		int drawingZoneOffsetY = windowData->drawingZoomLevel * windowData->drawingBitmapSize.y
+			- windowData->drawingZoneSize.y - windowData->drawingOffset.y;
+
+		if (drawingZoneOffsetY < 0)
+		{
+			windowData->drawingOffset.y += drawingZoneOffsetY;
+		}
+	}
+
+	if (windowData->drawingOffset.x < 0)
+	{
+		windowData->drawingOffset.x = 0;
+	}
+	else
+	{
+		int drawingZoneOffsetX = windowData->drawingZoomLevel * windowData->drawingBitmapSize.x
+			- windowData->drawingZoneSize.x - windowData->drawingOffset.x;
+
+		if (drawingZoneOffsetX < 0)
+		{
+			windowData->drawingOffset.x += drawingZoneOffsetX;
+		}
+	}
+}
+
+void CalculateDrawingZone(WindowData* windowData)
+{
+	windowData->drawingZoneSize.x = windowData->drawingBitmapSize.x;
+	windowData->drawingZoneSize.y = windowData->drawingBitmapSize.y;
+
+	if (windowData->drawingZoneSize.x > windowData->windowClientSize.x - windowData->drawingZonePosition.x)
+	{
+		windowData->drawingZoneSize.x = windowData->windowClientSize.x - windowData->drawingZonePosition.x;
+	}
+
+	if (windowData->drawingZoneSize.y > windowData->windowClientSize.y - windowData->drawingZonePosition.y)
+	{
+		windowData->drawingZoneSize.y = windowData->windowClientSize.y - windowData->drawingZonePosition.y;
+	}
 }
 
 void FillWindowClientWithWhite(ubyte4* bitmap, int2 bitmapSize)
 {
-	int length = bitmapSize.x * bitmapSize.y;
+	// around 350 microseconds
+	memset(bitmap, 255, bitmapSize.x * bitmapSize.y * 4);
+
+	/*int length = bitmapSize.x * bitmapSize.y;
 	for (int i = 0; i < length; i++)
 	{
 		bitmap[i] = ubyte4(255, 255, 255, 0);
-	}
+	}*/
 }
 
 void DrawLine(ubyte4* bitmap, int2 bitmapSize, int2 from, int2 to, ubyte3 color)
 {
-	float dx = abs(to.x - from.x);
-	float dy = -abs(to.y - from.y);
+	float dx = (float)abs(to.x - from.x);
+	float dy = (float)-abs(to.y - from.y);
 
 	char sx = to.x > from.x ? 1 : -1;
 	char sy = to.y > from.y ? 1 : -1;
@@ -194,7 +277,7 @@ void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 bottomLeft, i
 }
 
 void CopyBitmapToBitmap(ubyte4* sourceBitmap, int2 sourceBitmapSize,
-	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize)
+	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int destZoomLevel)
 {
 	int width = sourceBitmapSize.x;
 	int height = sourceBitmapSize.y;
@@ -209,11 +292,25 @@ void CopyBitmapToBitmap(ubyte4* sourceBitmap, int2 sourceBitmapSize,
 		height = destBitmapSize.y - destXY.y;
 	}
 
+	width /= destZoomLevel;
+	height /= destZoomLevel;
+
 	for (int y = 0; y < height; y++)
 	{
+		int yDest = destXY.y + destZoomLevel * y;
 		for (int x = 0; x < width; x++)
 		{
-			destBitmap[destXY.x + x + (destXY.y + y) * destBitmapSize.x] = sourceBitmap[x + y * sourceBitmapSize.x];
+			ubyte4 sourceColor = sourceBitmap[x + y * sourceBitmapSize.x];
+
+			int xDest = destXY.x + destZoomLevel * x;
+
+			for (int innerY = 0; innerY < destZoomLevel; innerY++)
+			{
+				for (int innerX = 0; innerX < destZoomLevel; innerX++)
+				{
+					destBitmap[innerX + xDest + (innerY + yDest) * destBitmapSize.x] = sourceColor;
+				}
+			}
 		}
 	}
 }

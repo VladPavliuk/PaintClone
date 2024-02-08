@@ -1,6 +1,7 @@
-//#include "renderer.h"
 #include "ui.h"
+
 #include <stdio.h>
+#include <dwmapi.h>
 
 LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -10,18 +11,7 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 	{
 		WindowData* windowData = (WindowData*)((CREATESTRUCTW*)lParam)->lpCreateParams;
 		SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)windowData);
-		break;
-	}
-	case WM_RBUTTONUP:
-	{
-		/*WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
-		int xMouse = GET_X_LPARAM(lParam);
-		int yMouse = GET_Y_LPARAM(lParam);
-
-		yMouse = windowData->clientSize.y - yMouse;
-
-		windowData->fillFrom = { xMouse, yMouse };*/
 		break;
 	}
 	case WM_LBUTTONUP:
@@ -29,7 +19,7 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 		windowData->isRightButtonHold = false;
-		windowData->isDrawing = false;
+		windowData->wasRightButtonReleased = true;
 		break;
 	}
 	case WM_LBUTTONDOWN:
@@ -37,45 +27,38 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 		windowData->isRightButtonHold = true;
-
-		ubyte2 zAndId = *(windowData->zAndIdBuffer + (windowData->mousePosition.x + windowData->windowClientSize.x * windowData->mousePosition.y));
-
-		// NOTE: only drawing canvas has zero id in z buffer, so only when we have initial click on actual canvas, we allow drawing
-		if (zAndId.y == 0)
-		{
-			windowData->isDrawing = true;
-
-			switch (windowData->selectedTool)
-			{
-			case DRAW_TOOL::FILL:
-			{
-				windowData->oneTimeClick = windowData->mousePosition;
-				break;
-			}
-			}
-		}
+		windowData->wasRightButtonPressed = true;
+		
 		break;
 	}
-	case WM_PAINT:
+	case WM_KEYDOWN:
 	{
-		/*WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
-		if (windowData->colorsInBrush.length > 0)
+		int offsetPerMove = (int)(100.0f / (float)windowData->drawingZoomLevel);
+
+		if (VK_UP == wParam)
 		{
-			DrawColorsBrush(windowData, &windowData->colorsInBrush, { 5, 5 }, { 15, 15 }, 5);
-
-			DrawToolsPanel(windowData, { 5, 30 }, { 15, 15 }, 5);
+			windowData->drawingOffset.y += offsetPerMove;
 		}
 
-		StretchDIBits(
-			windowData->deviceContext,
-			0, 0, windowData->clientSize.x, windowData->clientSize.y,
-			0, 0, windowData->clientSize.x, windowData->clientSize.y,
-			windowData->bitmap,
-			&windowData->bitmapInfo,
-			DIB_RGB_COLORS, SRCCOPY
-		);*/
+		if (VK_DOWN == wParam)
+		{
+			windowData->drawingOffset.y -= offsetPerMove;
+		}
 
+		if (VK_RIGHT == wParam)
+		{
+			windowData->drawingOffset.x += offsetPerMove;
+		}
+
+		if (VK_LEFT == wParam)
+		{
+			windowData->drawingOffset.x -= offsetPerMove;
+
+		}
+
+		ValidateDrawingOffset(windowData);
 		break;
 	}
 	case WM_MOUSEMOVE:
@@ -88,86 +71,29 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		yMouse = windowData->windowClientSize.y - yMouse;
 
 		windowData->mousePosition = { xMouse, yMouse };
-
-		if (wParam == MK_LBUTTON && windowData->isDrawing)
-		{
-			if (windowData->mousePosition.x >= windowData->drawingBitmapBottomLeft.x
-				&& windowData->mousePosition.y >= windowData->drawingBitmapBottomLeft.y
-				&& windowData->mousePosition.x < windowData->drawingBitmapBottomLeft.x + windowData->drawingBitmapSize.x
-				&& windowData->mousePosition.y < windowData->drawingBitmapBottomLeft.y + windowData->drawingBitmapSize.y)
-			{
-				switch (windowData->selectedTool)
-				{
-				case DRAW_TOOL::PENCIL:
-				{
-					windowData->pixelsToDraw.add(windowData->mousePosition);
-					break;
-				}
-				}
-			}
-			else
-			{
-				windowData->pixelsToDraw.clean();
-			}
-		}
-
 		break;
 	}
 	case WM_SIZE:
 	{
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
+		// NOTE: after window is create WM_SIZE message is recevied, since we init rendering after, we should ignore the first call
+		if (windowData->windowDC == 0)
+		{
+			break;
+		}
 		RECT clientRect;
 		GetClientRect(hwnd, &clientRect);
 		windowData->windowClientSize.x = clientRect.right - clientRect.left;
 		windowData->windowClientSize.y = clientRect.bottom - clientRect.top;
 
-		if (windowData->windowBitmap)
-		{
-			/*free(windowData->bitmap);
-			free(windowData->zAndIdBuffer);*/
-			windowData->windowBitmap = (ubyte4*)realloc(windowData->windowBitmap, 4 * windowData->windowClientSize.x * windowData->windowClientSize.y);
-			FillWindowClientWithWhite(windowData->windowBitmap, windowData->windowClientSize);
-
-			windowData->zAndIdBuffer = (ubyte2*)realloc(windowData->zAndIdBuffer, 2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
-			ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
-		}
-		else
-		{
-			windowData->windowBitmap = (ubyte4*)malloc(4 * windowData->windowClientSize.x * windowData->windowClientSize.y);
-			FillWindowClientWithWhite(windowData->windowBitmap, windowData->windowClientSize);
-
-			windowData->zAndIdBuffer = (ubyte2*)malloc(2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
-			ZeroMemory(windowData->zAndIdBuffer, 2 * windowData->windowClientSize.x * windowData->windowClientSize.y);
-		}
-
 		windowData->windowBitmapInfo.bmiHeader.biWidth = windowData->windowClientSize.x;
 		windowData->windowBitmapInfo.bmiHeader.biHeight = windowData->windowClientSize.y;
 
-		if (windowData->mousePosition.x >= windowData->windowClientSize.x)
-		{
-			windowData->mousePosition.x = windowData->mousePosition.x;
-		}
-		if (windowData->mousePosition.y >= windowData->windowClientSize.y)
-		{
-			windowData->mousePosition.y = windowData->mousePosition.y;
-		}
+		RecreateBackgroundBmp(windowData);
+		CalculateDrawingZone(windowData);
+		ValidateDrawingOffset(windowData);
 
-		if (windowData->colorsInBrush.length > 0)
-		{
-			DrawColorsBrush(windowData, &windowData->colorsInBrush, { 5, 5 }, { 15, 15 }, 5);
-
-			DrawToolsPanel(windowData, { 5, 30 }, { 15, 15 }, 5);
-		}
-
-		StretchDIBits(
-			windowData->deviceContext,
-			0, 0, windowData->windowClientSize.x, windowData->windowClientSize.y,
-			0, 0, windowData->windowClientSize.x, windowData->windowClientSize.y,
-			windowData->windowBitmap,
-			&windowData->windowBitmapInfo,
-			DIB_RGB_COLORS, SRCCOPY
-		);
 		break;
 	}
 	case WM_DESTROY:
@@ -177,10 +103,9 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 	return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-
 //TODO
-// Render bitmap into rect
-// Load bmp
+// +Render bitmap into rect
+// +Load bmp
 // Store bmp
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, int windowMode)
 {
@@ -193,19 +118,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	RegisterClass(&windowClass);
 
 	WindowData windowData;
+	InitWindowData(&windowData);
 
-	windowData.windowBitmap = NULL;
-
-	windowData.drawingBitmap = NULL;
-	windowData.drawingBitmapSize = { 1200, 600 };
-	windowData.drawingBitmapBottomLeft = { 25, 25 };
-
-	windowData.pixelsToDraw = SimpleDynamicArray<int2>(2);
-	windowData.oneTimeClick = { -1, -1 };
-	windowData.isRightButtonHold = false;
-	windowData.mousePosition = { 0,0 };
-	windowData.selectedColor = { 0,0,0 };
-	windowData.selectedTool = DRAW_TOOL::PENCIL;
+	QueryPerformanceFrequency(&windowData.perfomanceCounterFreq);
 
 	HWND hwnd = CreateWindowExW(
 		0,
@@ -223,38 +138,38 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		return -1;
 	}
 
+	//> Remove fade in animation when window is opened up
+	BOOL attrib = TRUE;
+	DwmSetWindowAttribute(hwnd, DWMWA_TRANSITIONS_FORCEDISABLED, &attrib, sizeof(attrib));
+	//<
+
 	ShowWindow(hwnd, windowMode);
-	UpdateWindow(hwnd);
+
 	InitRenderer(&windowData, hwnd);
 
-	FillWindowClientWithWhite(windowData.windowBitmap, windowData.windowClientSize);
+	windowData.toolTiles = SimpleDynamicArray<ToolTile>(10);
+	windowData.toolTiles.add(ToolTile(UI_ELEMENT::PENCIL_TOOL, DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp")));
+	windowData.toolTiles.add(ToolTile(UI_ELEMENT::FILL_TOOL, DRAW_TOOL::FILL, LoadBmpFile(L"./fill.bmp")));
+	windowData.toolTiles.add(ToolTile(UI_ELEMENT::ZOOM_TOOL, DRAW_TOOL::ZOOM, LoadBmpFile(L"./zoom.bmp")));
 
-	windowData.toolsImages = SimpleDynamicArray<BmpImage>(10);
-	windowData.toolsImages.set((int)DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp"));
-	windowData.toolsImages.set((int)DRAW_TOOL::FILL, LoadBmpFile(L"./fill.bmp"));
-
-	//BmpImage bmpTestImage = LoadBmpFile(L"./pencil.bmp");
-	//BmpImage bmpTestImage = LoadBmpFile(L"./fill.bmp");
-	//BmpImage bmpTestImage = LoadBmpFile(L"./testing.bmp");
-	//BmpImage bmpTestImage = LoadBmpFile(L"./testing_2.bmp");
-	//BmpImage bmpTestImage = LoadBmpFile(L"./testing_3.bmp");
-
-	windowData.colorsInBrush = SimpleDynamicArray<ubyte3>(10);
-	windowData.colorsInBrush.add({ 0, 0, 0 });
-	windowData.colorsInBrush.add({ 255, 255, 255 });
-	windowData.colorsInBrush.add({ 255, 0, 0 });
-	windowData.colorsInBrush.add({ 0, 255, 0 });
-	windowData.colorsInBrush.add({ 0, 0, 255 });
-	windowData.colorsInBrush.add({ 255, 255, 0 });
-	windowData.colorsInBrush.add({ 0, 255, 255 });
-	windowData.colorsInBrush.add({ 255, 0, 255 });
+	windowData.brushColorTiles = SimpleDynamicArray<BrushColorTile>(10);
+	windowData.brushColorTiles.add(BrushColorTile({ 0, 0, 0 }, UI_ELEMENT::COLOR_BRUCH_1));
+	windowData.brushColorTiles.add(BrushColorTile({ 255, 255, 255 }, UI_ELEMENT::COLOR_BRUCH_2));
+	windowData.brushColorTiles.add(BrushColorTile({ 255, 0, 0 }, UI_ELEMENT::COLOR_BRUCH_3));
+	windowData.brushColorTiles.add(BrushColorTile({ 0, 255, 0 }, UI_ELEMENT::COLOR_BRUCH_4));
+	windowData.brushColorTiles.add(BrushColorTile({ 0, 0, 255 }, UI_ELEMENT::COLOR_BRUCH_5));
+	windowData.brushColorTiles.add(BrushColorTile({ 255, 255, 0 }, UI_ELEMENT::COLOR_BRUCH_6));
+	windowData.brushColorTiles.add(BrushColorTile({ 0, 255, 255 }, UI_ELEMENT::COLOR_BRUCH_7));
+	windowData.brushColorTiles.add(BrushColorTile({ 255, 0, 255 }, UI_ELEMENT::COLOR_BRUCH_8));
 	//DrawLine(&windowData, { 500,500 }, { 100,100 });
 	//DrawRect(&windowData, 0, 0, 50, 30, { (ubyte)12,(ubyte)12,(ubyte)12 });
 
 	//DrawBitmap(&windowData, bmpTestImage.rgbaBitmap, { 300,300 }, bmpTestImage.size);
 	//DrawBorderRect(&windowData, {0,0}, { 100,100 }, 2, { 120,120,49 });
-
+	//FillFromPixel(&windowData, { 10,10 }, { 255, 0, 255 });
 	//DrawBorderRect(&windowData, { 500, 10 }, { 100, 10 }, 4, { 0,0,0 });
+	double deltasSum = 0.0f;
+	int framesCount = 1;
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
@@ -265,114 +180,66 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			continue;
 		}
 
-		if (windowData.isDrawing)
-		{
-			switch (windowData.selectedTool)
-			{
-			case DRAW_TOOL::PENCIL:
-			{
-				//> pencil drawing
-				if (windowData.pixelsToDraw.length > 1)
-				{
-					int2 fromPixel = windowData.pixelsToDraw.get(0);
-					int2 toPixel = windowData.pixelsToDraw.get(1);
+		//POINT mousePosition;
+		//GetCursorPos(&mousePosition);
+		//ScreenToClient(hwnd, &mousePosition);
+		//mousePosition.y = windowData.windowClientSize.y - mousePosition.y;
+		//windowData.mousePosition = { mousePosition.x, mousePosition.y };
 
-					fromPixel.x -= windowData.drawingBitmapBottomLeft.x;
-					fromPixel.y -= windowData.drawingBitmapBottomLeft.y;
+		double timeDelta = GetCurrentTimestamp(&windowData);
 
-					toPixel.x -= windowData.drawingBitmapBottomLeft.x;
-					toPixel.y -= windowData.drawingBitmapBottomLeft.y;
+		FillWindowClientWithWhite(windowData.windowBitmap, windowData.windowClientSize);
 
-					DrawLine(windowData.drawingBitmap, windowData.drawingBitmapSize, fromPixel, toPixel, windowData.selectedColor);
+		timeDelta = GetCurrentTimestamp(&windowData) - timeDelta;
 
-					//windowData.pixelsToDraw.remove(1);
-					windowData.pixelsToDraw.remove(0);
-				}
-
-				//<
-
-				break;
-			}
-			case DRAW_TOOL::FILL:
-			{
-				//> filling
-				if (windowData.oneTimeClick.x != -1)
-				{
-					windowData.oneTimeClick.x -= windowData.drawingBitmapBottomLeft.x;
-					windowData.oneTimeClick.y -= windowData.drawingBitmapBottomLeft.y;
-					
-					FillFromPixel(&windowData, windowData.oneTimeClick, windowData.selectedColor);
-					windowData.oneTimeClick = { -1,-1 };
-				}
-				//<
-				break;
-			}
-			}
-		}
-
-		if (!windowData.isRightButtonHold)
-		{
-			windowData.pixelsToDraw.clean();
-		}
-
+		char buff[100];
+		sprintf_s(buff, "time: %f\n", timeDelta);
+		//OutputDebugStringA(buff);
+		
 		// ui
-		DrawColorsBrush(&windowData, &windowData.colorsInBrush, { 5, 5 }, { 15, 15 }, 5);
+		DrawColorsBrush(&windowData, &windowData.brushColorTiles, { 5, 5 }, { 15, 15 }, 5);
 
 		DrawToolsPanel(&windowData, { 5, 30 }, { 15, 15 }, 5);
 
-		//> draw panel in which drawing bitmap is rendered
-		int width = windowData.drawingBitmapSize.x + 4;
-		int height = windowData.drawingBitmapSize.y + 4;
-
-		if (width > windowData.windowClientSize.x - windowData.drawingBitmapBottomLeft.x)
-		{
-			width = windowData.windowClientSize.x - windowData.drawingBitmapBottomLeft.x;
-		}
-		
-		if (height > windowData.windowClientSize.y - windowData.drawingBitmapBottomLeft.y)
-		{
-			height = windowData.windowClientSize.y - windowData.drawingBitmapBottomLeft.y;
-		}
-
-		DrawBorderRect(&windowData, { windowData.drawingBitmapBottomLeft.x - 2, windowData.drawingBitmapBottomLeft.y - 2 },
-			{ width, height}, 2, { 255,0,0 });
-		//<
-
-		/*DrawRectToZAndIdBuffer(windowData,
-			bottomLeft, size,
-			zIndex, uiId);*/
-
-			//char buff[100];
-			////sprintf_s(buff, "x: %i. y: %i\n", windowData.mousePosition.x, windowData.mousePosition.y);
-			//sprintf_s(buff, "id: %i\n", windowData.uiIdClicked);
-			//OutputDebugStringA(buff);
-
-		CopyBitmapToBitmap(windowData.drawingBitmap, windowData.drawingBitmapSize,
-			windowData.windowBitmap, windowData.drawingBitmapBottomLeft, windowData.windowClientSize);
-
 		StretchDIBits(
-			windowData.deviceContext,
-			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
-			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
-			windowData.windowBitmap,
-			&windowData.windowBitmapInfo,
-			DIB_RGB_COLORS, SRCCOPY
-		);
+			windowData.backgroundDC,
+			windowData.drawingZonePosition.x, windowData.windowClientSize.y - windowData.drawingZonePosition.y - windowData.drawingZoneSize.y,
+			windowData.drawingZoneSize.x, windowData.drawingZoneSize.y,
 
-		/*StretchDIBits(
-			windowData.deviceContext,
-			25, windowData.windowClientSize.y - windowData.drawingBitmapSize.y - 25, windowData.drawingBitmapSize.x, windowData.drawingBitmapSize.y,
-			0, 0, windowData.drawingBitmapSize.x, windowData.drawingBitmapSize.y,
+			(int)((float)windowData.drawingOffset.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingOffset.y / (float)windowData.drawingZoomLevel),
+			(int)((float)windowData.drawingZoneSize.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingZoneSize.y / (float)windowData.drawingZoomLevel),
+
 			windowData.drawingBitmap,
 			&windowData.drawingBitmapInfo,
 			DIB_RGB_COLORS, SRCCOPY
-		);*/
+		);
 
+		DrawDrawingCanvas(&windowData);
+
+		// NOTE: when charger is not connected to the laptop, it has around 10x slower performance!
+		BitBlt(windowData.windowDC,
+			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
+			windowData.backgroundDC, 0, 0, SRCCOPY);
+		deltasSum += timeDelta;
+		framesCount++;
+
+		// NOTE: at the end of frame we should clean mouse buttons state
+		// otherwise we might get overspaming behaviour
+		windowData.wasRightButtonPressed = false;
+		windowData.wasRightButtonReleased = false;
+
+		HandleUiElements(&windowData);
+		windowData.prevMousePosition = windowData.mousePosition;
+		windowData.prevHotUi = windowData.hotUi;
 	}
 
-	windowData.colorsInBrush.freeMemory();
-	//windowData.toolsImages.freeMemory();
-	ReleaseDC(hwnd, windowData.deviceContext);
+	double averageDelta = deltasSum / framesCount;
+
+	DeleteDC(windowData.backgroundDC);
+	ReleaseDC(hwnd, windowData.windowDC);
+	//SelectObject(windowData.backgroundDC, objectHandler);
+	windowData.brushColorTiles.freeMemory();
+	windowData.toolTiles.freeMemory();
 
 	return 0;
 }

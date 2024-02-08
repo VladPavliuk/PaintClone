@@ -1,14 +1,21 @@
 #pragma once
 
 #include "renderer.h"
+#include "math.h"
 
-void DrawRectToZAndIdBuffer(WindowData* windowData,
-	int2 bottomLeft,
-	int2 size,
-	ubyte zIndex,
-	ubyte uiId);
+//void DrawRectToZAndIdBuffer(WindowData* windowData,
+//	int2 bottomLeft,
+//	int2 size,
+//	ubyte zIndex,
+//	ubyte uiId);
 
-ubyte2 GetZAndIdFromBuffer(WindowData* windowData, int2 position);
+//ubyte2 GetZAndIdFromBuffer(WindowData* windowData, int2 position);
+
+void HandleUiElements(WindowData* windowData);
+
+void DrawDrawingCanvas(WindowData* windowData);
+
+void DrawScrollsForDrawingZone(WindowData* windowData);
 
 void DrawPanel(
 	WindowData* windowData,
@@ -18,23 +25,24 @@ void DrawPanel(
 	ubyte zIndex,
 	ubyte uiId);
 
-bool DrawBitmapButton(WindowData* windowData,
+void DrawBitmapButton(WindowData* windowData,
 	int2 bottomLeft, int2 size,
 	ubyte4* bitmap,
 	ubyte3 hoveredBgColor,
-	ubyte zIndex, ubyte uiId);
+	UI_ELEMENT uiElement);
 
-bool DrawButton(
+void DrawButton(
 	WindowData* windowData,
 	int2 bottomLeft,
 	int2 size,
 	ubyte3 bgColor,
 	ubyte3 hoveredBgColor,
-	ubyte zIndex,
-	ubyte uiId);
+	UI_ELEMENT uiElement);
 
-void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<ubyte3>* colors, int2 bottomLeft,
+void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>* colors, int2 bottomLeft,
 	int2 singleColorTileSize, int xDistanceToNextColor);
 
 void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
 	int2 singleToolTileSize, int yDistanceToNextToolTile);
+
+void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEMENT uiElement);

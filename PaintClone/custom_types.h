@@ -20,6 +20,11 @@ struct ubyte3
 	ubyte x;
 	ubyte y;
 	ubyte z;
+
+	bool operator==(ubyte3 const& b)
+	{
+		return x == b.x && y == b.y && z == b.z;
+	}
 };
 
 struct ubyte4
@@ -45,3 +50,11 @@ struct ubyte2
 
 typedef unsigned short ushort;
 typedef unsigned int uint;
+
+struct int4
+{
+	int x;
+	int y;
+	int z;
+	int w;
+};

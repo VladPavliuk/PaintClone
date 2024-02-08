@@ -16,7 +16,7 @@ void ReadFileIntoBuffer(const wchar_t* fileName, ubyte** buffer, int* bufferSize
 
 	assert(*buffer != 0);
 
-	int bytesRead = fread_s(*buffer, *bufferSize, 1, *bufferSize, file);
+	int bytesRead = (int)fread_s(*buffer, *bufferSize, 1, *bufferSize, file);
 
 	assert(bytesRead == *bufferSize);
 

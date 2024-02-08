@@ -78,7 +78,7 @@ struct SimpleDynamicArray
 		length--;
 	}
 
-	void clean()
+	void clear()
 	{
 		if (length == 0)
 		{
