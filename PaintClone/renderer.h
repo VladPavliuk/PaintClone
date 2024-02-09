@@ -10,7 +10,7 @@ void ValidateDrawingOffset(WindowData* windowData);
 void CalculateDrawingZone(WindowData* windowData);
 
 void DrawLine(ubyte4* bitmap, int2 bitmapSize, int2 from, int2 to, ubyte3 color);
-void FillWindowClientWithWhite(ubyte4* bitmap, int2 bitmapSize);
+void FillBitmapWithWhite(ubyte4* bitmap, int2 bitmapSize);
 
 void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color);
 
@@ -22,4 +22,4 @@ inline void DrawPixel(ubyte4* bitmap, int2 bitmapSize, int2 pixelCoord, ubyte3 c
 
 void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 topLeft, int2 bitmapSize);
 void CopyBitmapToBitmap(ubyte4* sourceBitmap, int2 sourceBitmapSize,
-	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int destZoomLevel);
+	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize);

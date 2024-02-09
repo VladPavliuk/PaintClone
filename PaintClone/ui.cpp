@@ -31,6 +31,30 @@ void HandleUiElements(WindowData* windowData)
 		}
 		break;
 	}
+	case UI_ELEMENT::CANVAS_CORNER_RESIZE:
+	{
+		// recalculate new drawing bitmap size
+		int2 previousBitmapSize = windowData->drawingBitmapSize;
+		windowData->drawingBitmapSize.x = windowData->drawingZoneCornerPosition.x - windowData->drawingZonePosition.x;
+		windowData->drawingBitmapSize.y = windowData->drawingZoneCornerPosition.y - windowData->drawingZonePosition.y;
+
+		CalculateDrawingZone(windowData);
+
+		// reallocate drawing bitmap for new drawing size
+		ubyte4* previousBitmap = windowData->drawingBitmap;
+
+		windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->drawingBitmapSize.x;
+		windowData->drawingBitmapInfo.bmiHeader.biHeight = windowData->drawingBitmapSize.y;
+
+		windowData->drawingBitmap = (ubyte4*)malloc(4 * windowData->drawingBitmapSize.x * windowData->drawingBitmapSize.y);
+		FillBitmapWithWhite(windowData->drawingBitmap, windowData->drawingBitmapSize);
+
+		CopyBitmapToBitmap(previousBitmap, previousBitmapSize,
+			windowData->drawingBitmap, { 0,0 }, windowData->drawingBitmapSize);
+
+		free(previousBitmap);
+		break;
+	}
 	case UI_ELEMENT::PENCIL_TOOL:
 	{
 		windowData->selectedTool = DRAW_TOOL::PENCIL;
@@ -83,14 +107,40 @@ void HandleUiElements(WindowData* windowData)
 	{
 		break;
 	}
-	case UI_ELEMENT::DRAWING_VERTICAL_SCROLL:
+	case UI_ELEMENT::CANVAS_CORNER_RESIZE:
+	{
+		windowData->drawingZoneCornerPosition.x = windowData->mousePosition.x - windowData->activeUiOffset.x;
+		windowData->drawingZoneCornerPosition.y = windowData->mousePosition.y - windowData->activeUiOffset.y;
+
+		if (windowData->drawingZoneCornerPosition.x > windowData->windowClientSize.x - windowData->drawingZoneCornerSize.x)
+		{
+			windowData->drawingZoneCornerPosition.x = windowData->windowClientSize.x - windowData->drawingZoneCornerSize.x;
+		}
+		else if (windowData->drawingZoneCornerPosition.x < windowData->drawingZonePosition.x + 1)
+		{
+			// add 1 because after resize drawing zone should be at least 1 pixel wide
+			windowData->drawingZoneCornerPosition.x = windowData->drawingZonePosition.x + 1;
+		}
+
+		if (windowData->drawingZoneCornerPosition.y > windowData->windowClientSize.y - windowData->drawingZoneCornerSize.y)
+		{
+			windowData->drawingZoneCornerPosition.y = windowData->windowClientSize.y - windowData->drawingZoneCornerSize.y;
+		}
+		else if (windowData->drawingZoneCornerPosition.y < windowData->drawingZonePosition.y + 1)
+		{
+			// add 1 because after resize drawing zone should be at least 1 pixel height
+			windowData->drawingZoneCornerPosition.y = windowData->drawingZonePosition.y + 1;
+		}
+		break;
+	}
+	case UI_ELEMENT::CANVAS_VERTICAL_SCROLL:
 	{
 		windowData->drawingOffset.y += windowData->drawingZoomLevel * (windowData->mousePosition.y - windowData->prevMousePosition.y);
 
 		ValidateDrawingOffset(windowData);
 		break;
 	}
-	case UI_ELEMENT::DRAWING_HORIZONTAL_SCROLL:
+	case UI_ELEMENT::CANVAS_HORIZONTAL_SCROLL:
 	{
 		windowData->drawingOffset.x += windowData->drawingZoomLevel * (windowData->mousePosition.x - windowData->prevMousePosition.x);
 
@@ -178,7 +228,7 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 				(int)(drawingZoneToImageHeightRatio * windowData->drawingOffset.y) + windowData->drawingZonePosition.y
 			},
 			{ scrollWidth, (int)(drawingZoneToImageHeightRatio * windowData->drawingZoneSize.y) },
-			scrollBgColor, scrollHoveredBgColor, UI_ELEMENT::DRAWING_VERTICAL_SCROLL);
+			scrollBgColor, scrollHoveredBgColor, UI_ELEMENT::CANVAS_VERTICAL_SCROLL);
 	}
 
 	// horizontal bar
@@ -192,7 +242,7 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 				windowData->drawingZonePosition.y - scrollWidth,
 			},
 			{ (int)(drawingZoneToImageWidthRatio * windowData->drawingZoneSize.x), scrollWidth },
-			scrollBgColor, scrollHoveredBgColor, UI_ELEMENT::DRAWING_HORIZONTAL_SCROLL);
+			scrollBgColor, scrollHoveredBgColor, UI_ELEMENT::CANVAS_HORIZONTAL_SCROLL);
 	}
 }
 
@@ -257,7 +307,7 @@ void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>*
 
 		if (brushColor.color == windowData->selectedColor)
 		{
-			DrawBorderRect(windowData, 
+			DrawBorderRect(windowData,
 				{ bottomLeft.x + (singleColorTileSize.x * i) + (xDistanceToNextColor * i) - 1, bottomLeft.y - 1 },
 				{ singleColorTileSize.x + 1, singleColorTileSize.y + 1 }, 2, { 0,0,0 });
 		}
@@ -284,11 +334,22 @@ void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
 	}
 }
 
+void DrawDraggableCornerOfDrawingZone(WindowData* windowData)
+{
+	DrawButton(windowData,
+		windowData->drawingZoneCornerPosition,
+		windowData->drawingZoneCornerSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::CANVAS_CORNER_RESIZE);
+}
+
 void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEMENT uiElement)
 {
 	bool isInRect = IsInRect(boundaries, windowData->mousePosition);
 
-	windowData->hotUi = isInRect ? uiElement : UI_ELEMENT::NONE;
+	if (isInRect)
+	{
+		windowData->hotUi = uiElement;
+	}
+	//windowData->hotUi = isInRect ? uiElement : UI_ELEMENT::NONE;
 
 	if (windowData->activeUi == uiElement)
 	{
@@ -297,10 +358,15 @@ void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEM
 			if (windowData->hotUi == uiElement) windowData->sumbitedUi = uiElement;
 
 			windowData->activeUi = UI_ELEMENT::NONE;
+			windowData->activeUiOffset = { -1, -1 };
 		}
 	}
 	else if (windowData->hotUi == uiElement)
 	{
-		if (windowData->wasRightButtonPressed) windowData->activeUi = uiElement;
+		if (windowData->wasRightButtonPressed)
+		{
+			windowData->activeUiOffset = { windowData->mousePosition.x - boundaries.x, windowData->mousePosition.y - boundaries.y };
+			windowData->activeUi = uiElement;
+		}
 	}
 }

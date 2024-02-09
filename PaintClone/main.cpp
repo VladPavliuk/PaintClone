@@ -20,6 +20,8 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		windowData->isRightButtonHold = false;
 		windowData->wasRightButtonReleased = true;
+
+		ReleaseCapture();
 		break;
 	}
 	case WM_LBUTTONDOWN:
@@ -28,7 +30,8 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		windowData->isRightButtonHold = true;
 		windowData->wasRightButtonPressed = true;
-		
+
+		SetCapture(hwnd);
 		break;
 	}
 	case WM_KEYDOWN:
@@ -61,16 +64,38 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		ValidateDrawingOffset(windowData);
 		break;
 	}
-	case WM_MOUSEMOVE:
+	case WM_MOUSELEAVE:
 	{
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		windowData->prevHotUi = UI_ELEMENT::NONE;
+		windowData->hotUi = UI_ELEMENT::NONE;
+		windowData->activeUiOffset = { -1,-1 };
+		//windowData->activeUi = UI_ELEMENT::NONE;
+		windowData->sumbitedUi = UI_ELEMENT::NONE;
+		break;
+	}
+	case WM_MOUSEMOVE:
+	{
+		//> It's required for WM_MOUSELEAVE
+		TRACKMOUSEEVENT trackMouseEvent;
+
+		trackMouseEvent.cbSize = sizeof(TRACKMOUSEEVENT);
+		trackMouseEvent.hwndTrack = hwnd;
+		trackMouseEvent.dwHoverTime = 0;
+		trackMouseEvent.dwFlags = TME_LEAVE;
+
+		TrackMouseEvent(&trackMouseEvent);
+		//<
+
+		/*WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 		int xMouse = GET_X_LPARAM(lParam);
 		int yMouse = GET_Y_LPARAM(lParam);
 
 		yMouse = windowData->windowClientSize.y - yMouse;
 
-		windowData->mousePosition = { xMouse, yMouse };
+		windowData->mousePosition = { xMouse, yMouse };*/
 		break;
 	}
 	case WM_SIZE:
@@ -180,19 +205,18 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			continue;
 		}
 
-		//POINT mousePosition;
-		//GetCursorPos(&mousePosition);
-		//ScreenToClient(hwnd, &mousePosition);
-		//mousePosition.y = windowData.windowClientSize.y - mousePosition.y;
-		//windowData.mousePosition = { mousePosition.x, mousePosition.y };
+		POINT mousePosition;
+		GetCursorPos(&mousePosition);
+		ScreenToClient(hwnd, &mousePosition);
+		mousePosition.y = windowData.windowClientSize.y - mousePosition.y;
+		windowData.mousePosition = { mousePosition.x, mousePosition.y };
 
 		double timeDelta = GetCurrentTimestamp(&windowData);
 
-		FillWindowClientWithWhite(windowData.windowBitmap, windowData.windowClientSize);
-		
+		FillBitmapWithWhite(windowData.windowBitmap, windowData.windowClientSize);
+
 		// ui
 		DrawColorsBrush(&windowData, &windowData.brushColorTiles, { 5, 5 }, { 15, 15 }, 5);
-
 		DrawToolsPanel(&windowData, { 5, 30 }, { 15, 15 }, 5);
 
 		StretchDIBits(
@@ -209,6 +233,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		);
 
 		DrawDrawingCanvas(&windowData);
+		DrawDraggableCornerOfDrawingZone(&windowData);
 
 		// NOTE: when charger is not connected to the laptop, it has around 10x slower performance!
 		BitBlt(windowData.windowDC,
@@ -223,6 +248,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		HandleUiElements(&windowData);
 		windowData.prevMousePosition = windowData.mousePosition;
 		windowData.prevHotUi = windowData.hotUi;
+		windowData.hotUi = UI_ELEMENT::NONE;
 
 		timeDelta = GetCurrentTimestamp(&windowData) - timeDelta;
 		char buff[100];
@@ -232,7 +258,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		framesCount++;
 	}
 
-	// 08.02.2024 average frame time - 2.21 ml sec (without charged connected to the laptop).
+	// 08.02.2024 average frame time - 2.21 ml sec. without charger connected to the laptop, 0.34 ml sec. with charger connected to the laptop
 	double averageDelta = deltasSum / framesCount;
 	char buff2[100];
 	sprintf_s(buff2, "AVERAGE FRAME TIME: %f ml sec.\n", averageDelta * 1000.0f);

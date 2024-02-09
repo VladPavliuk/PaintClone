@@ -22,8 +22,9 @@ enum class UI_ELEMENT
 
 	DRAWING_CANVAS,
 
-	DRAWING_VERTICAL_SCROLL,
-	DRAWING_HORIZONTAL_SCROLL,
+	CANVAS_VERTICAL_SCROLL,
+	CANVAS_HORIZONTAL_SCROLL,
+	CANVAS_CORNER_RESIZE,
 
 	PENCIL_TOOL,
 	FILL_TOOL,
@@ -74,6 +75,8 @@ struct WindowData
 	int2 drawingBitmapSize;
 	int2 drawingZoneSize; // for client rect
 	int2 drawingZonePosition; // relative to client rect
+	int2 drawingZoneCornerPosition; // relative to client rect
+	int2 drawingZoneCornerSize; // relative to client rect
 
 	int drawingZoomLevel;
 	int2 drawingOffset; // relative to bottom-left point
@@ -94,6 +97,7 @@ struct WindowData
 	//> ui
 	UI_ELEMENT prevHotUi;
 	UI_ELEMENT hotUi;
+	int2 activeUiOffset; // delta coordinates from element position to mouse position, when element because active
 	UI_ELEMENT activeUi;
 	UI_ELEMENT sumbitedUi; // ui element that should be handled
 	//<
