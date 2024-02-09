@@ -123,7 +123,7 @@ void HandleUiElements(WindowData* windowData)
 		windowData->drawingZoneCornerResize.x = windowData->mousePosition.x - windowData->activeUiOffset.x;
 		windowData->drawingZoneCornerResize.y = windowData->mousePosition.y - windowData->activeUiOffset.y;
 		windowData->drawingZoneCornerResize.UpdateTopRight();
-		
+
 		if (windowData->drawingZoneCornerResize.z > windowData->windowClientSize.x)
 		{
 			windowData->drawingZoneCornerResize.x = windowData->windowClientSize.x - windowData->drawingZoneCornerResize.size.x;
@@ -163,55 +163,62 @@ void HandleUiElements(WindowData* windowData)
 	}
 	case UI_ELEMENT::DRAWING_CANVAS:
 	{
-		if (windowData->hotUi == UI_ELEMENT::DRAWING_CANVAS)
+		if (windowData->selectedTool == DRAW_TOOL::PENCIL)
 		{
-			if (windowData->prevHotUi != UI_ELEMENT::DRAWING_CANVAS)
+			int2 fromPixel = windowData->prevMousePosition;
+			int2 toPixel = windowData->mousePosition;
+
+			if (!IsInRect({ windowData->drawingZone.x, windowData->drawingZone.y, windowData->drawingZone.z, windowData->drawingZone.w }, fromPixel)
+				&& !IsInRect({ windowData->drawingZone.x, windowData->drawingZone.y, windowData->drawingZone.z, windowData->drawingZone.w }, toPixel))
 			{
 				break;
 			}
 
-			if (windowData->selectedTool == DRAW_TOOL::PENCIL)
+			fromPixel.x -= windowData->drawingZone.x;
+			fromPixel.y -= windowData->drawingZone.y;
+
+			toPixel.x -= windowData->drawingZone.x;
+			toPixel.y -= windowData->drawingZone.y;
+
+			fromPixel.x += windowData->drawingOffset.x;
+			fromPixel.y += windowData->drawingOffset.y;
+
+			toPixel.x += windowData->drawingOffset.x;
+			toPixel.y += windowData->drawingOffset.y;
+
+			fromPixel.x = (int)((float)fromPixel.x / (float)windowData->drawingZoomLevel);
+			fromPixel.y = (int)((float)fromPixel.y / (float)windowData->drawingZoomLevel);
+
+			toPixel.x = (int)((float)toPixel.x / (float)windowData->drawingZoomLevel);
+			toPixel.y = (int)((float)toPixel.y / (float)windowData->drawingZoomLevel);
+
+			int4 drawingRect;
+
+			drawingRect.x = 0;
+			drawingRect.y = 0;
+			drawingRect.z = windowData->drawingZone.size.x;
+			drawingRect.w = windowData->drawingZone.size.y;
+
+			drawingRect.x += windowData->drawingOffset.x;
+			drawingRect.y += windowData->drawingOffset.y;
+			drawingRect.z += windowData->drawingOffset.x;
+			drawingRect.w += windowData->drawingOffset.y;
+
+			drawingRect.x = (int)((float)drawingRect.x / (float)windowData->drawingZoomLevel);
+			drawingRect.y = (int)((float)drawingRect.y / (float)windowData->drawingZoomLevel);
+			drawingRect.z = (int)((float)drawingRect.z / (float)windowData->drawingZoomLevel);
+			drawingRect.w = (int)((float)drawingRect.w / (float)windowData->drawingZoomLevel);
+
+			if (fromPixel.x == toPixel.x && fromPixel.y == toPixel.y)
 			{
-				int2 fromPixel = windowData->prevMousePosition;
-				int2 toPixel = windowData->mousePosition;
-
-				/*if (IsInRect({ windowData->zone }, fromPixel))
-				{
-
-				}*/
-
-				fromPixel.x -= windowData->drawingZone.x;
-				fromPixel.y -= windowData->drawingZone.y;
-
-				toPixel.x -= windowData->drawingZone.x;
-				toPixel.y -= windowData->drawingZone.y;
-
-				fromPixel.x += windowData->drawingOffset.x;
-				fromPixel.y += windowData->drawingOffset.y;
-
-				toPixel.x += windowData->drawingOffset.x;
-				toPixel.y += windowData->drawingOffset.y;
-
-				fromPixel.x = (int)((float)fromPixel.x / (float)windowData->drawingZoomLevel);
-				fromPixel.y = (int)((float)fromPixel.y / (float)windowData->drawingZoomLevel);
-
-				toPixel.x = (int)((float)toPixel.x / (float)windowData->drawingZoomLevel);
-				toPixel.y = (int)((float)toPixel.y / (float)windowData->drawingZoomLevel);
-
-				if (fromPixel.x == toPixel.x && fromPixel.y == toPixel.y)
-				{
-					DrawPixel(windowData->drawingBitmap, windowData->drawingBitmapSize, toPixel, windowData->selectedColor);
-				}
-				else
-				{
-					DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize, fromPixel, toPixel, windowData->selectedColor);
-				}
+				DrawPixel(windowData->drawingBitmap, windowData->drawingBitmapSize, toPixel, windowData->selectedColor);
+			}
+			else
+			{
+				DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize, drawingRect, fromPixel, toPixel, windowData->selectedColor);
 			}
 		}
-		else
-		{
-			//windowData->pixelsToDraw.clear();
-		}
+
 		break;
 	}
 	}

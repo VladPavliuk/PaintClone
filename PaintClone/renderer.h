@@ -1,6 +1,7 @@
 #pragma once
 
 #include "window_data.h"
+#include "math.h"
 
 void RecreateBackgroundBmp(WindowData* windowData);
 
@@ -9,7 +10,7 @@ void InitRenderer(WindowData* windowData, HWND hwnd);
 void ValidateDrawingOffset(WindowData* windowData);
 void CalculateDrawingZoneSize(WindowData* windowData);
 
-void DrawLine(ubyte4* bitmap, int2 bitmapSize, int2 from, int2 to, ubyte3 color);
+void DrawLine(ubyte4* bitmap, int2 bitmapSize, int4 drawingRect, int2 from, int2 to, ubyte3 color);
 void FillBitmapWithWhite(ubyte4* bitmap, int2 bitmapSize);
 
 void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color);

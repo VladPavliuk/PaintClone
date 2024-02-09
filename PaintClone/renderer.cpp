@@ -132,7 +132,7 @@ void FillBitmapWithWhite(ubyte4* bitmap, int2 bitmapSize)
 	}*/
 }
 
-void DrawLine(ubyte4* bitmap, int2 bitmapSize, int2 from, int2 to, ubyte3 color)
+void DrawLine(ubyte4* bitmap, int2 bitmapSize, int4 bitmapRect, int2 from, int2 to, ubyte3 color)
 {
 	float dx = (float)abs(to.x - from.x);
 	float dy = (float)-abs(to.y - from.y);
@@ -144,7 +144,11 @@ void DrawLine(ubyte4* bitmap, int2 bitmapSize, int2 from, int2 to, ubyte3 color)
 
 	while (from.x != to.x || from.y != to.y)
 	{
-		DrawPixel(bitmap, bitmapSize, from, color);
+		if (IsInRect(bitmapRect, from))
+		{
+			DrawPixel(bitmap, bitmapSize, from, color);
+		}
+
 		float e2 = 2 * error;
 
 		if (e2 >= dy)
