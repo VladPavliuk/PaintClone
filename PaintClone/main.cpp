@@ -21,6 +21,7 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->isRightButtonHold = false;
 		windowData->wasRightButtonReleased = true;
 
+		// NOTE: We have to release previously capture, because we won't be able to use windws default buttons on the window
 		ReleaseCapture();
 		break;
 	}
@@ -71,8 +72,11 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->prevHotUi = UI_ELEMENT::NONE;
 		windowData->hotUi = UI_ELEMENT::NONE;
 		windowData->activeUiOffset = { -1,-1 };
+		// NOTE: we don't reset active ui after the mouse left the window
+		// because it would prevent us from having some behaviour, like holding a slider and move it even if the mouse is outside of the window
 		//windowData->activeUi = UI_ELEMENT::NONE;
 		windowData->sumbitedUi = UI_ELEMENT::NONE;
+		windowData->sumbitedOnAnyHotUi = UI_ELEMENT::NONE;
 		break;
 	}
 	case WM_MOUSEMOVE:
@@ -88,14 +92,14 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		TrackMouseEvent(&trackMouseEvent);
 		//<
 
-		/*WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 		int xMouse = GET_X_LPARAM(lParam);
 		int yMouse = GET_Y_LPARAM(lParam);
 
 		yMouse = windowData->windowClientSize.y - yMouse;
 
-		windowData->mousePosition = { xMouse, yMouse };*/
+		windowData->mousePosition = { xMouse, yMouse };
 		break;
 	}
 	case WM_SIZE:
@@ -116,7 +120,7 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->windowBitmapInfo.bmiHeader.biHeight = windowData->windowClientSize.y;
 
 		RecreateBackgroundBmp(windowData);
-		CalculateDrawingZone(windowData);
+		CalculateDrawingZoneSize(windowData);
 		ValidateDrawingOffset(windowData);
 
 		break;
@@ -205,11 +209,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			continue;
 		}
 
-		POINT mousePosition;
+		/*POINT mousePosition;
 		GetCursorPos(&mousePosition);
 		ScreenToClient(hwnd, &mousePosition);
 		mousePosition.y = windowData.windowClientSize.y - mousePosition.y;
-		windowData.mousePosition = { mousePosition.x, mousePosition.y };
+		windowData.mousePosition = { mousePosition.x, mousePosition.y };*/
 
 		double timeDelta = GetCurrentTimestamp(&windowData);
 
@@ -221,11 +225,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 		StretchDIBits(
 			windowData.backgroundDC,
-			windowData.drawingZonePosition.x, windowData.windowClientSize.y - windowData.drawingZonePosition.y - windowData.drawingZoneSize.y,
-			windowData.drawingZoneSize.x, windowData.drawingZoneSize.y,
+			windowData.drawingZone.x, windowData.windowClientSize.y - windowData.drawingZone.y - windowData.drawingZone.size.y,
+			windowData.drawingZone.size.x, windowData.drawingZone.size.y,
 
 			(int)((float)windowData.drawingOffset.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingOffset.y / (float)windowData.drawingZoomLevel),
-			(int)((float)windowData.drawingZoneSize.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingZoneSize.y / (float)windowData.drawingZoomLevel),
+			(int)((float)windowData.drawingZone.size.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingZone.size.y / (float)windowData.drawingZoomLevel),
 
 			windowData.drawingBitmap,
 			&windowData.drawingBitmapInfo,

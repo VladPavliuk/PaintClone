@@ -73,16 +73,12 @@ struct WindowData
 	BITMAPINFO drawingBitmapInfo;
 	ubyte4* drawingBitmap;
 	int2 drawingBitmapSize;
-	int2 drawingZoneSize; // for client rect
-	int2 drawingZonePosition; // relative to client rect
-	int2 drawingZoneCornerPosition; // relative to client rect
-	int2 drawingZoneCornerSize; // relative to client rect
+
+	Rect drawingZone; // relative to client rect
+	Rect drawingZoneCornerResize; // relative to client rect
 
 	int drawingZoomLevel;
 	int2 drawingOffset; // relative to bottom-left point
-
-	// (first byte for z index, second byte for id) of a ui element
-	//ubyte2* zAndIdBuffer;
 
 	int2 windowClientSize;
 
@@ -99,7 +95,8 @@ struct WindowData
 	UI_ELEMENT hotUi;
 	int2 activeUiOffset; // delta coordinates from element position to mouse position, when element because active
 	UI_ELEMENT activeUi;
-	UI_ELEMENT sumbitedUi; // ui element that should be handled
+	UI_ELEMENT sumbitedUi; // ui element that is set when press and release happens on the same ui element
+	UI_ELEMENT sumbitedOnAnyHotUi; // ui element that is set when press and release happens on any ui element
 	//<
 
 	//bool isDrawing;

@@ -7,7 +7,7 @@ void RecreateBackgroundBmp(WindowData* windowData);
 void InitRenderer(WindowData* windowData, HWND hwnd);
 
 void ValidateDrawingOffset(WindowData* windowData);
-void CalculateDrawingZone(WindowData* windowData);
+void CalculateDrawingZoneSize(WindowData* windowData);
 
 void DrawLine(ubyte4* bitmap, int2 bitmapSize, int2 from, int2 to, ubyte3 color);
 void FillBitmapWithWhite(ubyte4* bitmap, int2 bitmapSize);

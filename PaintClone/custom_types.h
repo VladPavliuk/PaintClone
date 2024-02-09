@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+
 struct int2
 {
 	int x;
@@ -57,4 +59,29 @@ struct int4
 	int y;
 	int z;
 	int w;
+};
+
+struct Rect
+{
+	int x;
+	int y;
+	int z;
+	int w;
+
+	int2 size;
+
+	void UpdateSize()
+	{
+		size.x = z - x;
+		size.y = w - y;
+
+		assert(size.x >= 0);
+		assert(size.y >= 0);
+	}
+
+	void UpdateTopRight()
+	{
+		z = x + size.x;
+		w = y + size.y;
+	}
 };

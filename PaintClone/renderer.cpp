@@ -59,7 +59,7 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	FillBitmapWithWhite(windowData->drawingBitmap, windowData->drawingBitmapSize);
 
 	RecreateBackgroundBmp(windowData);
-	CalculateDrawingZone(windowData);
+	CalculateDrawingZoneSize(windowData);
 
 	SelectObject(windowData->windowDC, windowData->backgroundBmp);
 }
@@ -73,7 +73,7 @@ void ValidateDrawingOffset(WindowData* windowData)
 	else
 	{
 		int drawingZoneOffsetY = windowData->drawingZoomLevel * windowData->drawingBitmapSize.y
-			- windowData->drawingZoneSize.y - windowData->drawingOffset.y;
+			- windowData->drawingZone.size.y - windowData->drawingOffset.y;
 
 		if (drawingZoneOffsetY < 0)
 		{
@@ -88,7 +88,7 @@ void ValidateDrawingOffset(WindowData* windowData)
 	else
 	{
 		int drawingZoneOffsetX = windowData->drawingZoomLevel * windowData->drawingBitmapSize.x
-			- windowData->drawingZoneSize.x - windowData->drawingOffset.x;
+			- windowData->drawingZone.size.x - windowData->drawingOffset.x;
 
 		if (drawingZoneOffsetX < 0)
 		{
@@ -97,23 +97,27 @@ void ValidateDrawingOffset(WindowData* windowData)
 	}
 }
 
-void CalculateDrawingZone(WindowData* windowData)
+void CalculateDrawingZoneSize(WindowData* windowData)
 {
-	windowData->drawingZoneSize.x = windowData->drawingBitmapSize.x;
-	windowData->drawingZoneSize.y = windowData->drawingBitmapSize.y;
+	windowData->drawingZone.size.x = windowData->drawingBitmapSize.x;
+	windowData->drawingZone.size.y = windowData->drawingBitmapSize.y;
 
-	if (windowData->drawingZoneSize.x > windowData->windowClientSize.x - windowData->drawingZonePosition.x)
+	windowData->drawingZone.UpdateTopRight();
+
+	if (windowData->drawingZone.z > windowData->windowClientSize.x - windowData->drawingZoneCornerResize.size.x)
 	{
-		windowData->drawingZoneSize.x = windowData->windowClientSize.x - windowData->drawingZonePosition.x;
+		windowData->drawingZone.z = windowData->windowClientSize.x - windowData->drawingZoneCornerResize.size.x;
 	}
 
-	if (windowData->drawingZoneSize.y > windowData->windowClientSize.y - windowData->drawingZonePosition.y)
+	if (windowData->drawingZone.w > windowData->windowClientSize.y - windowData->drawingZoneCornerResize.size.y)
 	{
-		windowData->drawingZoneSize.y = windowData->windowClientSize.y - windowData->drawingZonePosition.y;
+		windowData->drawingZone.w = windowData->windowClientSize.y - windowData->drawingZoneCornerResize.size.y;
 	}
+	windowData->drawingZone.UpdateSize();
 
-	windowData->drawingZoneCornerPosition.x = windowData->drawingZonePosition.x + windowData->drawingZoneSize.x;
-	windowData->drawingZoneCornerPosition.y = windowData->drawingZonePosition.y + windowData->drawingZoneSize.y;
+	windowData->drawingZoneCornerResize.x = windowData->drawingZone.z;
+	windowData->drawingZoneCornerResize.y = windowData->drawingZone.w;
+	windowData->drawingZoneCornerResize.UpdateTopRight();
 }
 
 void FillBitmapWithWhite(ubyte4* bitmap, int2 bitmapSize)

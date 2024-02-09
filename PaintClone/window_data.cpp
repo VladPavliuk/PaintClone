@@ -21,10 +21,12 @@ void InitWindowData(WindowData* windowData)
 	//windowData.drawingBitmapSize = { 3840, 2160 };
 	windowData->drawingBitmapSize = { 400, 400 };
 
-	windowData->drawingZoneSize = { 0, 0 };
-	windowData->drawingZonePosition = { 35, 35 };
-	windowData->drawingZoneCornerPosition = { 0, 0 };
-	windowData->drawingZoneCornerSize = { 10, 10 };
+	windowData->drawingZone = { 35, 35, 35, 35 };
+	windowData->drawingZone.UpdateSize();
+
+	windowData->drawingZoneCornerResize = { 0, 0, 0, 0 };
+	windowData->drawingZoneCornerResize.size = { 10, 10 };
+	windowData->drawingZoneCornerResize.UpdateTopRight();
 
 	windowData->drawingZoomLevel = 1;
 	windowData->drawingOffset = { 0, 0 };
