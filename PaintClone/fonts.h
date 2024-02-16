@@ -15,6 +15,12 @@ struct FontGlyph
 	SimpleDynamicArray<SimpleDynamicArray<int2>> contours; // contours a list of closed polygons
 };
 
+struct FontData
+{
+	int4 maxBoundaries;
+	HashTable<FontGlyph> glyphs;
+};
+
 struct RasterizedGlyph
 {
 	wchar_t code;
@@ -166,5 +172,5 @@ struct TTFSimpleGlyph
 //<
 
 RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight);
-HashTable<RasterizedGlyph> RasterizeFontGlyphs(HashTable<FontGlyph>* fontGlyphs);
-HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>* alphabet);
+HashTable<RasterizedGlyph> RasterizeFontGlyphs(FontData* font, int lineHeight);
+FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>* alphabet);

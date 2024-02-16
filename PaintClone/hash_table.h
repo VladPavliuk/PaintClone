@@ -37,6 +37,9 @@ struct HashTable
 	int _currentIterationIndex;
 	int _currentIterationIndexInBucket;
 
+	HashTable()
+	{}
+
 	HashTable(int capacity)
 	{
 		/*	_keySize = sizeof(T);

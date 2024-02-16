@@ -1,7 +1,7 @@
 ﻿#include "fonts.h"
 
-void FillClosedPolygon(RasterizedGlyph rasterizedGlyph, 
-	SimpleDynamicArray<SimpleDynamicArray<int2>>* contours, 
+void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
+	SimpleDynamicArray<SimpleDynamicArray<int2>>* contours,
 	ubyte4 colorToFill)
 {
 	int height = rasterizedGlyph.bitmapSize.y;
@@ -72,7 +72,7 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 
 			float slope = (float)(topPoint.y - bottomPoint.y) / (float)(topPoint.x - bottomPoint.x);
 
-			int xIntersection = bottomPoint.x + (float)(verticalPixel - bottomPoint.y) / slope;
+			int xIntersection = bottomPoint.x + (int)((float)(verticalPixel - bottomPoint.y) / slope);
 			xIntersections.add(xIntersection);
 		}
 
@@ -110,7 +110,7 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 
 	float scaleRatio = (float)glyphPixelsHeight / (float)fontGlyphHeight;
 
-	fontGlyphWidth *= scaleRatio;
+	fontGlyphWidth = (int)((float)fontGlyphWidth * scaleRatio);
 	fontGlyphHeight = glyphPixelsHeight;
 
 	rasterizedGlyph.bitmapSize = { fontGlyphWidth + 1, fontGlyphHeight + 1 };
@@ -133,8 +133,8 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 			point.x -= fontGlyph.coordsRect.x;
 			point.y -= fontGlyph.coordsRect.y;
 
-			point.x *= scaleRatio;
-			point.y *= scaleRatio;
+			point.x = (int)((float)point.x * scaleRatio);
+			point.y = (int)((float)point.y * scaleRatio);
 
 			if (!duplicatedPointsMap[point.x + point.y * rasterizedGlyph.bitmapSize.x])
 			{
@@ -143,7 +143,10 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 			}
 		}
 
-		scaledContours.add(scaledContour);
+		if (scaledContour.length > 0)
+		{
+			scaledContours.add(scaledContour);
+		}
 	}
 	free(duplicatedPointsMap);
 
@@ -154,8 +157,6 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 
 		contour->add(contour->get(0));
 	}
-
-	//rasterizedGlyph.contours = scaledContours;
 
 	rasterizedGlyph.bitmap = (ubyte4*)malloc(4 * rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
 
@@ -197,15 +198,21 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 	return rasterizedGlyph;
 }
 
-HashTable<RasterizedGlyph> RasterizeFontGlyphs(HashTable<FontGlyph>* fontGlyphs)
+HashTable<RasterizedGlyph> RasterizeFontGlyphs(FontData* font, int lineHeight)
 {
-	HashTable<RasterizedGlyph> rasterizedGlyphs = HashTable<RasterizedGlyph>(fontGlyphs->_capacity);
+	HashTable<RasterizedGlyph> rasterizedGlyphs = HashTable<RasterizedGlyph>(font->glyphs._capacity);
 
-	fontGlyphs->resetIteration();
+	int maxWidth = font->maxBoundaries.z - font->maxBoundaries.x;
+	int maxHeight = font->maxBoundaries.w - font->maxBoundaries.y;
+
+	font->glyphs.resetIteration();
 	HashTableItem<int, FontGlyph> fontGlyph;
-	while (fontGlyphs->getNext(&fontGlyph))
+	while (font->glyphs.getNext(&fontGlyph))
 	{
-		RasterizedGlyph rasterizedGlyph = RasterizeFontGlyph(fontGlyph.value, 100);
+		int glyphHeight = fontGlyph.value.coordsRect.w - fontGlyph.value.coordsRect.y;
+		int glyphScaledHeight = (int)((float)glyphHeight * (float)lineHeight / (float)maxHeight);
+		
+		RasterizedGlyph rasterizedGlyph = RasterizeFontGlyph(fontGlyph.value, glyphScaledHeight);
 
 		rasterizedGlyphs.set(fontGlyph.key, rasterizedGlyph);
 	}
@@ -214,8 +221,10 @@ HashTable<RasterizedGlyph> RasterizeFontGlyphs(HashTable<FontGlyph>* fontGlyphs)
 }
 
 // PERFORMANCE +-3 ml sec
-HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>* alphabet)
+FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>* alphabet)
 {
+	FontData fontData;
+
 	ubyte* ttfFileBuffer;
 	int ttfFileSize;
 	ReadFileIntoBuffer(ttfFilePath, &ttfFileBuffer, &ttfFileSize);
@@ -230,8 +239,6 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 	ttfFileBufferCursor += sizeof(ttfFileHeader);
 
 	ttfFileBufferCursor -= sizeof(ttfFileHeader.tableRecords);
-	//TTFFileHeader ttfFileHeader;
-	//memcpy_s(&ttfFileHeader, sizeof(TTFFileHeader), ttfFileBuffer, sizeof(TTFFileHeader));
 
 	// TODO: Remove table records array if not needed
 	ttfFileHeader.tableRecords = SimpleDynamicArray<TTFTableRecord>(ttfFileHeader.numTables);
@@ -248,8 +255,6 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 
 		ttfTableRecord.offset = _byteswap_ulong(ttfTableRecord.offset);
 		ttfTableRecord.length = _byteswap_ulong(ttfTableRecord.length);
-
-		//ttfFileHeader.tableRecords.add(ttfTableRecord);
 
 		if (CompareStrings("cmap", 4, (const char*)ttfTableRecord.tag, 4))
 		{
@@ -281,7 +286,12 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 	TTFheadTableHeader ttfHeadTableHeader = *(TTFheadTableHeader*)ttfFileBufferCursor;
 	ttfHeadTableHeader.magicNumber = _byteswap_ulong(ttfHeadTableHeader.magicNumber);
 	ttfHeadTableHeader.indexToLocFormat = _byteswap_ushort(ttfHeadTableHeader.indexToLocFormat);
+	ttfHeadTableHeader.xMin = _byteswap_ushort(ttfHeadTableHeader.xMin);
+	ttfHeadTableHeader.yMin = _byteswap_ushort(ttfHeadTableHeader.yMin);
+	ttfHeadTableHeader.xMax = _byteswap_ushort(ttfHeadTableHeader.xMax);
+	ttfHeadTableHeader.yMax = _byteswap_ushort(ttfHeadTableHeader.yMax);
 
+	fontData.maxBoundaries = { ttfHeadTableHeader.xMin ,ttfHeadTableHeader.yMin, ttfHeadTableHeader.xMax, ttfHeadTableHeader.yMax };
 	if (ttfHeadTableHeader.magicNumber != 0x5F0F3CF5)
 	{
 		assert(false);
@@ -344,9 +354,6 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 		assert(false);
 	}
 	//<
-
-	//SimpleDynamicArray<ushort> chars = SimpleDynamicArray<ushort>(100);
-	//SimpleDynamicArray<ushort> glyphIds = SimpleDynamicArray<ushort>(100);
 
 	ushort* charToGlyphIdMapping = (ushort*)malloc(USHRT_MAX * sizeof(ushort));
 	ZeroMemory(charToGlyphIdMapping, USHRT_MAX * sizeof(ushort));
@@ -466,18 +473,8 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 					// if glyphId, that means utf char has no glyph in the font 
 					if (glyphId != 0)
 					{
-						/*wchar_t* test = (wchar_t*)malloc(4);
-						test[0] = c;
-						test[1] = L'\0';
-						char buff[100];
-						sprintf_s(buff, "%i - %s\n", c, test);
-						OutputDebugStringA(buff);
-						free(test);*/
 						charToGlyphIdMapping[c] = glyphId;
-						/*chars.add(c);
-						glyphIds.add(glyphId);*/
 					}
-					//assert(false);
 				}
 			}
 
@@ -494,12 +491,7 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 	}
 
 	// glyf table
-	//{
-	//	TTFcmapSubtableFormat4 format4 = *(TTFcmapSubtableFormat4*)ttfFileBufferCursor;
-
-	//}
-
-	HashTable<FontGlyph> glyphs = HashTable<FontGlyph>(alphabet->length);
+	fontData.glyphs = HashTable<FontGlyph>(alphabet->length);
 	// GLYPHS DATA READING
 	for (int codeIndex = 0; codeIndex < alphabet->length; codeIndex++)
 	{
@@ -517,12 +509,12 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 		{
 			assert(false);
 		}
-		//int glyphId = glyphIds.get(charIndex);
+
 		int offsetToGlyph = ttfLocaTableLong.offsets.get(glyphId);
 
 		ttfFileBufferCursor = ttfFileBuffer + glyfTableRecord.offset + offsetToGlyph;
-		// trying to find a glyph data from offset
 
+		// trying to find a glyph data from offset
 		TTFglyfHeader ttfGlyfHeader = *(TTFglyfHeader*)ttfFileBufferCursor;
 		ttfFileBufferCursor += sizeof(ttfGlyfHeader);
 
@@ -656,22 +648,6 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 			previousCoord = currentCoord + previousCoord;
 		}
 
-		//> tesing print of coords
-		//char buff[100];
-		/*for (int i = 0; i < lastIndex; i++)
-		{
-			short x = ttfSimpleGlyph.xCoordinates.get(i);
-			short y = ttfSimpleGlyph.yCoordinates.get(i);
-
-			sprintf_s(buff, "(%i, %i)\n", x, y);
-			OutputDebugStringA(buff);
-		}*/
-		//<
-
-		// points gneration for testing char
-		//SimpleDynamicArray<int2> outputPoints = SimpleDynamicArray<int2>(10);
-		//int j = 0;
-		//int index = 0;
 		int startIndexInContur = 0;
 
 		for (int i = 0; i < ttfGlyfHeader.numberOfContours; i++)
@@ -727,8 +703,8 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 
 				if (!(p2Flag & 0x01)) // ON_CURVE_POINT
 				{
-					p2.x = p1.x + (p2.x - p1.x) / 2.0f;
-					p2.y = p1.y + (p2.y - p1.y) / 2.0f;
+					p2.x = p1.x + (int)((float)(p2.x - p1.x) / 2.0f);
+					p2.y = p1.y + (int)((float)(p2.y - p1.y) / 2.0f);
 				}
 				pointsGenerated += GenerateBezierCurve(p0, p1, p2, 30, &contourPoints);
 			}
@@ -755,17 +731,15 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 		ttfSimpleGlyph.xCoordinates.freeMemory();
 		ttfSimpleGlyph.yCoordinates.freeMemory();
 
-		glyphs.set(glyph.code, glyph);
+		fontData.glyphs.set(glyph.code, glyph);
 	}
 
 	free(charToGlyphIdMapping);
-	/*chars.freeMemory();
-	glyphIds.freeMemory();*/
 	ttfLocaTableLong.offsets.freeMemory();
 	ttfFileHeader.tableRecords.freeMemory();
 	free(ttfFileBuffer);
 
-	return glyphs;
+	return fontData;
 }
 
 

@@ -28,8 +28,7 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 		alphabet.add(alphabetStr[i]);
 	}
 
-	double timeDelta2 = GetCurrentTimestamp(windowData);
-	HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(fontFilePath, &alphabet);
+	FontData font = ReadFontFromTTF(fontFilePath, &alphabet);
 
 	/*glyphs.resetIteration();
 	HashTableItem<int, FontGlyph> fontGlyph;
@@ -43,12 +42,13 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 	}
 	glyphs.freeMemory();*/
 
+	double timeDelta2 = GetCurrentTimestamp(windowData);
+	HashTable<RasterizedGlyph> rasterizedGlyphs = RasterizeFontGlyphs(&font, 100);
+
 	timeDelta2 = GetCurrentTimestamp(windowData) - timeDelta2;
 	char buff[100];
 	sprintf_s(buff, "frame time: %f ml sec.\n", timeDelta2 * 1000.0f);
 	OutputDebugStringA(buff);
-
-	HashTable<RasterizedGlyph> rasterizedGlyphs = RasterizeFontGlyphs(&glyphs);
 
 	//RasterizedGlyph glyph = rasterizedGlyphs.get(L'a');
 

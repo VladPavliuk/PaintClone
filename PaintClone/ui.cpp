@@ -16,14 +16,7 @@ void HandleUiElements(WindowData* windowData)
 		{
 			int2 pixelToStart = windowData->mousePosition;
 
-			pixelToStart.x -= windowData->drawingZone.x;
-			pixelToStart.y -= windowData->drawingZone.y;
-
-			pixelToStart.x += windowData->drawingOffset.x;
-			pixelToStart.y += windowData->drawingOffset.y;
-
-			pixelToStart.x = (int)((float)pixelToStart.x / (float)windowData->drawingZoomLevel);
-			pixelToStart.y = (int)((float)pixelToStart.y / (float)windowData->drawingZoomLevel);
+			pixelToStart = ConvertFromScreenToDrawingCoords(windowData, pixelToStart);
 
 			FillFromPixel(windowData, pixelToStart, windowData->selectedColor);
 			break;
@@ -176,24 +169,6 @@ void HandleUiElements(WindowData* windowData)
 
 			fromPixel = ConvertFromScreenToDrawingCoords(windowData, fromPixel);
 			toPixel = ConvertFromScreenToDrawingCoords(windowData, toPixel);
-
-			//fromPixel.x -= windowData->drawingZone.x;
-			//fromPixel.y -= windowData->drawingZone.y;
-
-			//toPixel.x -= windowData->drawingZone.x;
-			//toPixel.y -= windowData->drawingZone.y;
-
-			//fromPixel.x += windowData->drawingOffset.x;
-			//fromPixel.y += windowData->drawingOffset.y;
-
-			//toPixel.x += windowData->drawingOffset.x;
-			//toPixel.y += windowData->drawingOffset.y;
-
-			//fromPixel.x = (int)((float)fromPixel.x / (float)windowData->drawingZoomLevel);
-			//fromPixel.y = (int)((float)fromPixel.y / (float)windowData->drawingZoomLevel);
-
-			//toPixel.x = (int)((float)toPixel.x / (float)windowData->drawingZoomLevel);
-			//toPixel.y = (int)((float)toPixel.y / (float)windowData->drawingZoomLevel);
 
 			int4 drawingRect;
 

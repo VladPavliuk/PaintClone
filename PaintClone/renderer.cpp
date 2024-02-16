@@ -265,9 +265,9 @@ inline ubyte3 GetPixelColor(ubyte4* bitmap, int2 bitmapSize, int2 pixelCoord)
 	ubyte4 currentPixel = *(bitmap + (pixelCoord.x + bitmapSize.x * pixelCoord.y));
 
 	return {
-		currentPixel.x,
+		currentPixel.z,
 		currentPixel.y,
-		currentPixel.z
+		currentPixel.x
 	};
 }
 
