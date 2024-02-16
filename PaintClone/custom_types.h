@@ -42,6 +42,16 @@ struct ubyte4
 	ubyte y;
 	ubyte z;
 	ubyte w;
+
+	bool operator==(ubyte4 const& b)
+	{
+		return x == b.x && y == b.y && z == b.z && w == b.w;
+	}
+
+	bool operator!=(ubyte4 const& b)
+	{
+		return !(x == b.x && y == b.y && z == b.z && w == b.w);
+	}
 };
 
 struct ubyte2

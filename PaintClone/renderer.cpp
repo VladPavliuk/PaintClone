@@ -1,5 +1,19 @@
 #include "renderer.h"
 
+int2 ConvertFromScreenToDrawingCoords(WindowData* windowData, int2 point)
+{
+	point.x -= windowData->drawingZone.x;
+	point.y -= windowData->drawingZone.y;
+
+	point.x += windowData->drawingOffset.x;
+	point.y += windowData->drawingOffset.y;
+
+	point.x = (int)((float)point.x / (float)windowData->drawingZoomLevel);
+	point.y = (int)((float)point.y / (float)windowData->drawingZoomLevel);
+
+	return point;
+}
+
 void RecreateBackgroundBmp(WindowData* windowData)
 {
 	if (windowData->backgroundBmp)

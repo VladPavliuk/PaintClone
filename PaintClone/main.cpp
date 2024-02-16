@@ -1,7 +1,9 @@
-#include "ui.h"
+﻿#include "ui.h"
 
 #include <stdio.h>
 #include <dwmapi.h>
+#include "fonts.h"
+#include "hash_table.h"
 
 LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -175,6 +177,79 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	ShowWindow(hwnd, windowMode);
 
 	InitRenderer(&windowData, hwnd);
+
+	//> testing fonts
+	//wchar_t alphabetStr[] = L"АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя !\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
+	wchar_t alphabetStr[] = L"!\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
+	//wchar_t alphabetStr[] = L"ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
+	//wchar_t alphabetStr[] = L"~";
+	
+	SimpleDynamicArray<wchar_t> alphabet = SimpleDynamicArray<wchar_t>(10);
+	for (int i = 0; i < wcslen(alphabetStr); i++)
+	{
+		alphabet.add(alphabetStr[i]);
+	}
+
+	double timeDelta2 = GetCurrentTimestamp(&windowData);
+	HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\arial.ttf", &alphabet);
+	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\calibri.ttf", &alphabet);
+	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\Candarai.ttf", &alphabet);
+	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\corbel.ttf", &alphabet);
+	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\comicbd.ttf", &alphabet);
+	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\segoeuiz.ttf", &alphabet);
+	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"Envy Code R.ttf", &alphabet);
+	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"ShadeBlue-2OozX.ttf", &alphabet);
+	timeDelta2 = GetCurrentTimestamp(&windowData) - timeDelta2;
+	char buff[100];
+	sprintf_s(buff, "frame time: %f ml sec.\n", timeDelta2 * 1000.0f);
+	OutputDebugStringA(buff);
+
+	HashTable<RasterizedGlyph> rasterizedGlyphs = RasterizeFontGlyphs(&glyphs);
+
+	RasterizedGlyph glyph = rasterizedGlyphs.get(L'~');
+
+	CopyBitmapToBitmap(glyph.bitmap, glyph.bitmapSize, windowData.drawingBitmap, { 10,10 }, windowData.drawingBitmapSize);
+	
+	//>testing draiwing points
+	//for (int i = 0; i < glyph.contours.length; i++)
+	//{
+	//	SimpleDynamicArray<int2> points = glyph.contours.get(i);
+	//	for (int j = 0; j < points.length - 1; j++)
+	//	{
+	//		int2 currentPoint = points.get(j);
+	//		int2 nextPoint = points.get(j + 1);
+	//		//int2 nextPoint = glyph.points.get((i + 1) % (glyph.points.length - 1));
+
+	//		/*currentPoint.x = currentPoint.x / 5.0f;
+	//		currentPoint.y = currentPoint.y / 5.0f;*/
+
+	//		currentPoint.x += 100;
+	//		currentPoint.y += 100;
+
+	//		//nextPoint.x = nextPoint.x / 5.0f;
+	//		//nextPoint.y = nextPoint.y / 5.0f;
+
+	//		nextPoint.x += 100;
+	//		nextPoint.y += 100;
+
+	//		int4 drawingRect;
+	//		drawingRect.x = 0;
+	//		drawingRect.y = 0;
+	//		drawingRect.z = windowData.drawingZone.size.x;
+	//		drawingRect.w = windowData.drawingZone.size.y;
+
+	//		currentPoint = ConvertFromScreenToDrawingCoords(&windowData, currentPoint);
+	//		nextPoint = ConvertFromScreenToDrawingCoords(&windowData, nextPoint);
+
+	//		//ubyte testColor = j * 255.0f / points.length;
+	//		ubyte testColor = 0;
+	//		DrawLine(windowData.drawingBitmap, windowData.drawingBitmapSize, drawingRect, currentPoint, nextPoint, { testColor,testColor,testColor });
+	//	}
+	//}
+	//<
+
+	//ReadGlyphsFromTTF(L"Envy Code R.ttf", &alphabet);
+	//<
 
 	windowData.toolTiles = SimpleDynamicArray<ToolTile>(10);
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::PENCIL_TOOL, DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp")));

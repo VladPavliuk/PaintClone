@@ -1,5 +1,7 @@
 #pragma once
+
 #include <assert.h>
+#include <windows.h>
 
 template<typename T>
 struct SimpleDynamicArray
@@ -12,7 +14,9 @@ struct SimpleDynamicArray
 	T* _elements;
 
 	SimpleDynamicArray()
-	{}
+	{
+		//_elements = NULL;
+	}
 
 	SimpleDynamicArray(int initCapacity)
 	{

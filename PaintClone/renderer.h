@@ -3,6 +3,8 @@
 #include "window_data.h"
 #include "math.h"
 
+int2 ConvertFromScreenToDrawingCoords(WindowData* windowData, int2 point);
+
 void RecreateBackgroundBmp(WindowData* windowData);
 
 void InitRenderer(WindowData* windowData, HWND hwnd);

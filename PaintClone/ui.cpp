@@ -174,23 +174,26 @@ void HandleUiElements(WindowData* windowData)
 				break;
 			}
 
-			fromPixel.x -= windowData->drawingZone.x;
-			fromPixel.y -= windowData->drawingZone.y;
+			fromPixel = ConvertFromScreenToDrawingCoords(windowData, fromPixel);
+			toPixel = ConvertFromScreenToDrawingCoords(windowData, toPixel);
 
-			toPixel.x -= windowData->drawingZone.x;
-			toPixel.y -= windowData->drawingZone.y;
+			//fromPixel.x -= windowData->drawingZone.x;
+			//fromPixel.y -= windowData->drawingZone.y;
 
-			fromPixel.x += windowData->drawingOffset.x;
-			fromPixel.y += windowData->drawingOffset.y;
+			//toPixel.x -= windowData->drawingZone.x;
+			//toPixel.y -= windowData->drawingZone.y;
 
-			toPixel.x += windowData->drawingOffset.x;
-			toPixel.y += windowData->drawingOffset.y;
+			//fromPixel.x += windowData->drawingOffset.x;
+			//fromPixel.y += windowData->drawingOffset.y;
 
-			fromPixel.x = (int)((float)fromPixel.x / (float)windowData->drawingZoomLevel);
-			fromPixel.y = (int)((float)fromPixel.y / (float)windowData->drawingZoomLevel);
+			//toPixel.x += windowData->drawingOffset.x;
+			//toPixel.y += windowData->drawingOffset.y;
 
-			toPixel.x = (int)((float)toPixel.x / (float)windowData->drawingZoomLevel);
-			toPixel.y = (int)((float)toPixel.y / (float)windowData->drawingZoomLevel);
+			//fromPixel.x = (int)((float)fromPixel.x / (float)windowData->drawingZoomLevel);
+			//fromPixel.y = (int)((float)fromPixel.y / (float)windowData->drawingZoomLevel);
+
+			//toPixel.x = (int)((float)toPixel.x / (float)windowData->drawingZoomLevel);
+			//toPixel.y = (int)((float)toPixel.y / (float)windowData->drawingZoomLevel);
 
 			int4 drawingRect;
 
