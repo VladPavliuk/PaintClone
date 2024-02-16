@@ -5,6 +5,80 @@
 #include "fonts.h"
 #include "hash_table.h"
 
+void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
+{
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\calibri.ttf"; // THIS ONE HAS COMPLEX CONTOURS
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\Candarai.ttf"; // THIS ONE HAS COMPLEX CONTOURS
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\corbel.ttf"; // THIS ONE HAS COMPLEX CONTOURS
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\comicbd.ttf";
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\segoeuiz.ttf";
+	//const wchar_t* fontFilePath = L"Envy Code R.ttf";
+	const wchar_t* fontFilePath = L"ShadeBlue-2OozX.ttf";
+
+	//> testing fonts
+	//wchar_t alphabetStr[] = L"АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя !\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
+	wchar_t alphabetStr[] = L"!\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
+	//wchar_t alphabetStr[] = L"ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
+	//wchar_t alphabetStr[] = L"~";
+
+	SimpleDynamicArray<wchar_t> alphabet = SimpleDynamicArray<wchar_t>(10);
+	for (int i = 0; i < wcslen(alphabetStr); i++)
+	{
+		alphabet.add(alphabetStr[i]);
+	}
+
+	double timeDelta2 = GetCurrentTimestamp(windowData);
+	HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(fontFilePath, &alphabet);
+
+	/*glyphs.resetIteration();
+	HashTableItem<int, FontGlyph> fontGlyph;
+	while (glyphs.getNext(&fontGlyph))
+	{
+		for (int i = 0; i < fontGlyph.value.contours.length; i++)
+		{
+			fontGlyph.value.contours.get(i).freeMemory();
+		}
+		fontGlyph.value.contours.freeMemory();
+	}
+	glyphs.freeMemory();*/
+
+	timeDelta2 = GetCurrentTimestamp(windowData) - timeDelta2;
+	char buff[100];
+	sprintf_s(buff, "frame time: %f ml sec.\n", timeDelta2 * 1000.0f);
+	OutputDebugStringA(buff);
+
+	HashTable<RasterizedGlyph> rasterizedGlyphs = RasterizeFontGlyphs(&glyphs);
+
+	//RasterizedGlyph glyph = rasterizedGlyphs.get(L'a');
+
+	int2 bottomLeft = { 0,0 };
+	int verticalSize = 100;
+	for (int i = 0; i < alphabet.length; i++)
+	{
+		//int2 prevBottomLeft = bottomLeft;
+		wchar_t code = alphabet.get(i);
+
+		RasterizedGlyph rasterizedGlyph = rasterizedGlyphs.get(code);
+
+		CopyBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize, windowData->drawingBitmap, bottomLeft, windowData->drawingBitmapSize);
+
+		if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
+
+		bottomLeft.x += rasterizedGlyph.bitmapSize.x;
+		bottomLeft.x += 10;
+
+		if (bottomLeft.x + rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x)
+		{
+			bottomLeft.y += verticalSize;
+			bottomLeft.y += 10;
+			bottomLeft.x = 0;
+		}
+
+		if (bottomLeft.y + verticalSize > windowData->drawingBitmapSize.y) break;
+	}
+}
+
 LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
@@ -35,6 +109,17 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->wasRightButtonPressed = true;
 
 		SetCapture(hwnd);
+		break;
+	}
+	case WM_KEYUP:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		if (0x51 == wParam)
+		{
+			FillBitmapWithWhite(windowData->drawingBitmap, windowData->drawingBitmapSize);
+			RasterizeTestingFontAndPutOnCanvas(windowData);
+		}
 		break;
 	}
 	case WM_KEYDOWN:
@@ -178,79 +263,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 	InitRenderer(&windowData, hwnd);
 
-	//> testing fonts
-	//wchar_t alphabetStr[] = L"АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя !\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
-	wchar_t alphabetStr[] = L"!\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
-	//wchar_t alphabetStr[] = L"ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
-	//wchar_t alphabetStr[] = L"~";
+	//RasterizeTestingFontAndPutOnCanvas(&windowData);
 	
-	SimpleDynamicArray<wchar_t> alphabet = SimpleDynamicArray<wchar_t>(10);
-	for (int i = 0; i < wcslen(alphabetStr); i++)
-	{
-		alphabet.add(alphabetStr[i]);
-	}
-
-	double timeDelta2 = GetCurrentTimestamp(&windowData);
-	HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\arial.ttf", &alphabet);
-	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\calibri.ttf", &alphabet);
-	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\Candarai.ttf", &alphabet);
-	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\corbel.ttf", &alphabet);
-	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\comicbd.ttf", &alphabet);
-	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"C:\\Windows\\Fonts\\segoeuiz.ttf", &alphabet);
-	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"Envy Code R.ttf", &alphabet);
-	//HashTable<FontGlyph> glyphs = ReadGlyphsFromTTF(L"ShadeBlue-2OozX.ttf", &alphabet);
-	timeDelta2 = GetCurrentTimestamp(&windowData) - timeDelta2;
-	char buff[100];
-	sprintf_s(buff, "frame time: %f ml sec.\n", timeDelta2 * 1000.0f);
-	OutputDebugStringA(buff);
-
-	HashTable<RasterizedGlyph> rasterizedGlyphs = RasterizeFontGlyphs(&glyphs);
-
-	RasterizedGlyph glyph = rasterizedGlyphs.get(L'~');
-
-	CopyBitmapToBitmap(glyph.bitmap, glyph.bitmapSize, windowData.drawingBitmap, { 10,10 }, windowData.drawingBitmapSize);
-	
-	//>testing draiwing points
-	//for (int i = 0; i < glyph.contours.length; i++)
-	//{
-	//	SimpleDynamicArray<int2> points = glyph.contours.get(i);
-	//	for (int j = 0; j < points.length - 1; j++)
-	//	{
-	//		int2 currentPoint = points.get(j);
-	//		int2 nextPoint = points.get(j + 1);
-	//		//int2 nextPoint = glyph.points.get((i + 1) % (glyph.points.length - 1));
-
-	//		/*currentPoint.x = currentPoint.x / 5.0f;
-	//		currentPoint.y = currentPoint.y / 5.0f;*/
-
-	//		currentPoint.x += 100;
-	//		currentPoint.y += 100;
-
-	//		//nextPoint.x = nextPoint.x / 5.0f;
-	//		//nextPoint.y = nextPoint.y / 5.0f;
-
-	//		nextPoint.x += 100;
-	//		nextPoint.y += 100;
-
-	//		int4 drawingRect;
-	//		drawingRect.x = 0;
-	//		drawingRect.y = 0;
-	//		drawingRect.z = windowData.drawingZone.size.x;
-	//		drawingRect.w = windowData.drawingZone.size.y;
-
-	//		currentPoint = ConvertFromScreenToDrawingCoords(&windowData, currentPoint);
-	//		nextPoint = ConvertFromScreenToDrawingCoords(&windowData, nextPoint);
-
-	//		//ubyte testColor = j * 255.0f / points.length;
-	//		ubyte testColor = 0;
-	//		DrawLine(windowData.drawingBitmap, windowData.drawingBitmapSize, drawingRect, currentPoint, nextPoint, { testColor,testColor,testColor });
-	//	}
-	//}
-	//<
-
-	//ReadGlyphsFromTTF(L"Envy Code R.ttf", &alphabet);
-	//<
-
 	windowData.toolTiles = SimpleDynamicArray<ToolTile>(10);
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::PENCIL_TOOL, DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp")));
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::FILL_TOOL, DRAW_TOOL::FILL, LoadBmpFile(L"./fill.bmp")));

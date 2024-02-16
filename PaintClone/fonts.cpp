@@ -101,6 +101,7 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 
 RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 {
+	ubyte4 color = { 0, 0, 0, 0 };
 	RasterizedGlyph rasterizedGlyph;
 	rasterizedGlyph.code = fontGlyph.code;
 
@@ -157,31 +158,35 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 	//rasterizedGlyph.contours = scaledContours;
 
 	rasterizedGlyph.bitmap = (ubyte4*)malloc(4 * rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
-	ZeroMemory(rasterizedGlyph.bitmap, 4 * rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
+
+	FillBitmapWithWhite(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize);
+
+	// black background
+	//ZeroMemory(rasterizedGlyph.bitmap, 4 * rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
 
 	//> create outlline of glyph
 	// Uncomment to create outline of points
-	for (int i = 0; i < scaledContours.length; i++)
-	{
-		SimpleDynamicArray<int2> contour = scaledContours.get(i);
-		SimpleDynamicArray<int2> scaledContour = SimpleDynamicArray<int2>(contour.length);
+	//for (int i = 0; i < scaledContours.length; i++)
+	//{
+	//	SimpleDynamicArray<int2> contour = scaledContours.get(i);
+	//	SimpleDynamicArray<int2> scaledContour = SimpleDynamicArray<int2>(contour.length);
 
-		for (int j = 0; j < contour.length - 1; j++)
-		{
-			int2 point = contour.get(j);
-			int2 nextPoint = contour.get(j + 1);
+	//	for (int j = 0; j < contour.length - 1; j++)
+	//	{
+	//		int2 point = contour.get(j);
+	//		int2 nextPoint = contour.get(j + 1);
 
-			// plot a single point
-			//rasterizedGlyph.bitmap[point.x + point.y * rasterizedGlyph.bitmapSize.x] = { 255, 0, 0, 0 };
+	//		// plot a single point
+	//		//rasterizedGlyph.bitmap[point.x + point.y * rasterizedGlyph.bitmapSize.x] = { 255, 0, 0, 0 };
 
-			int4 boundaries = { 0, 0, rasterizedGlyph.bitmapSize.x, rasterizedGlyph.bitmapSize.y };
-			DrawLine(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
-				boundaries, point, nextPoint, { 123, 0, 0 });
-		}
-	}
+	//		int4 boundaries = { 0, 0, rasterizedGlyph.bitmapSize.x, rasterizedGlyph.bitmapSize.y };
+	//		DrawLine(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
+	//			boundaries, point, nextPoint, { 123, 0, 0 });
+	//	}
+	//}
 	//<
 
-	FillClosedPolygon(rasterizedGlyph, &scaledContours,{ 0, 0, 123, 0 });
+	FillClosedPolygon(rasterizedGlyph, &scaledContours, color);
 
 	for (int i = 0; i < scaledContours.length; i++)
 	{
@@ -200,7 +205,7 @@ HashTable<RasterizedGlyph> RasterizeFontGlyphs(HashTable<FontGlyph>* fontGlyphs)
 	HashTableItem<int, FontGlyph> fontGlyph;
 	while (fontGlyphs->getNext(&fontGlyph))
 	{
-		RasterizedGlyph rasterizedGlyph = RasterizeFontGlyph(fontGlyph.value, 200);
+		RasterizedGlyph rasterizedGlyph = RasterizeFontGlyph(fontGlyph.value, 100);
 
 		rasterizedGlyphs.set(fontGlyph.key, rasterizedGlyph);
 	}
@@ -208,6 +213,7 @@ HashTable<RasterizedGlyph> RasterizeFontGlyphs(HashTable<FontGlyph>* fontGlyphs)
 	return rasterizedGlyphs;
 }
 
+// PERFORMANCE +-3 ml sec
 HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>* alphabet)
 {
 	ubyte* ttfFileBuffer;
@@ -504,25 +510,13 @@ HashTable<FontGlyph> ReadGlyphsFromTTF(const wchar_t* ttfFilePath, SimpleDynamic
 		// NOTE: usually we will have 2 contours (one for inner outline, second for outer outline)
 		glyph.contours = SimpleDynamicArray<SimpleDynamicArray<int2>>(2);
 
-		//int charIndex = -1;
-
 		int glyphId = charToGlyphIdMapping[code];
 
-		//for (int i = 0; i < chars.length; i++)
-		//{
-		//	int charForGlyph = chars.get(i);
-		//	if (code == charForGlyph)
-		//	{
-		//		charIndex = i;
-		//		break;
-		//	}
-		//}
-
-		//if (charIndex == -1)
-		//{
-		//	assert(false);
-		//}
-
+		// no glyph for the symbol
+		if (glyphId == 0)
+		{
+			assert(false);
+		}
 		//int glyphId = glyphIds.get(charIndex);
 		int offsetToGlyph = ttfLocaTableLong.offsets.get(glyphId);
 

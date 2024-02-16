@@ -19,7 +19,7 @@ void InitWindowData(WindowData* windowData)
 	windowData->drawingBitmap = NULL;
 	// works correctly up to 32000x32000 pixels
 	//windowData.drawingBitmapSize = { 3840, 2160 };
-	windowData->drawingBitmapSize = { 400, 400 };
+	windowData->drawingBitmapSize = { 800, 800 };
 
 	windowData->drawingZone = { 35, 35, 35, 35 };
 	windowData->drawingZone.UpdateSize();

@@ -186,4 +186,19 @@ struct HashTable
 	{
 		return key % _capacity;
 	}
+
+	void freeMemory()
+	{
+		for (int i = 0; i < _capacity; i++)
+		{
+			if (_buckets[i]._elements != NULL)
+			{
+				_buckets[i].freeMemory();
+			}
+		}
+
+		free(_elements);
+		free(_buckets);
+		free(_occupiedIndexes);
+	}
 };
