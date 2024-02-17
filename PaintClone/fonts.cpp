@@ -1,8 +1,7 @@
 ﻿#include "fonts.h"
 
 void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
-	SimpleDynamicArray<SimpleDynamicArray<int2>>* contours,
-	ubyte4 colorToFill)
+	SimpleDynamicArray<SimpleDynamicArray<float2>>* contours)
 {
 	int height = rasterizedGlyph.bitmapSize.y;
 	int width = rasterizedGlyph.bitmapSize.x;
@@ -15,20 +14,20 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 	}
 
 	// In order to use the algorithm, we should create a list of edges (line connection points)
-	SimpleDynamicArray<int4> edges = SimpleDynamicArray<int4>(totalPointsCount);
+	SimpleDynamicArray<float4> edges = SimpleDynamicArray<float4>(totalPointsCount);
 	for (int i = 0; i < contours->length; i++)
 	{
-		SimpleDynamicArray<int2>* points = contours->getPointer(i);
+		SimpleDynamicArray<float2>* points = contours->getPointer(i);
 
 		for (int j = 0; j < points->length - 1; j++)
 		{
-			int2 topPoint = points->get(j);
-			int2 bottomPoint = points->get(j + 1);
+			float2 topPoint = points->get(j);
+			float2 bottomPoint = points->get(j + 1);
 
 			// edges should be directed from top to bottom
 			if (bottomPoint.y > topPoint.y)
 			{
-				int2 tmp = bottomPoint;
+				float2 tmp = bottomPoint;
 				bottomPoint = topPoint;
 				topPoint = tmp;
 			}
@@ -38,10 +37,12 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 	}
 
 	// BEGIN FILL ALGORITHM
-	SimpleDynamicArray<int4> activeEdges = SimpleDynamicArray<int4>(10);
-	SimpleDynamicArray<int> xIntersections = SimpleDynamicArray<int>(10);
+	SimpleDynamicArray<float4> activeEdges = SimpleDynamicArray<float4>(10);
+	SimpleDynamicArray<float> xIntersections = SimpleDynamicArray<float>(10);
 
-	for (int verticalPixel = 0; verticalPixel < height; verticalPixel++)
+	int verticalSubSteps = 4;
+	float pixelWeightPerIteration = 255.0f / (float)verticalSubSteps;
+	for (float scanline = 0; scanline <= height; scanline += 1.0f / verticalSubSteps)
 	{
 		activeEdges.clear();
 		xIntersections.clear();
@@ -49,12 +50,12 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 		// check for active edges
 		for (int i = 0; i < edges.length; i++)
 		{
-			int4 edge = edges.get(i);
-			int2 topPoint = { edge.x, edge.y };
-			int2 bottomPoint = { edge.z, edge.w };
+			float4 edge = edges.get(i);
+			float2 topPoint = { edge.x, edge.y };
+			float2 bottomPoint = { edge.z, edge.w };
 
 			// NOTE: the algorithm is VERY sensitive to this boundary check!
-			if (verticalPixel > bottomPoint.y && verticalPixel <= topPoint.y)
+			if (scanline > bottomPoint.y && scanline <= topPoint.y)
 			{
 				activeEdges.add(edge);
 			}
@@ -63,16 +64,16 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 		// find intersection points
 		for (int i = 0; i < activeEdges.length; i++)
 		{
-			int4 activeEdge = activeEdges.get(i);
+			float4 activeEdge = activeEdges.get(i);
 
-			int2 topPoint = { activeEdge.x, activeEdge.y };
-			int2 bottomPoint = { activeEdge.z, activeEdge.w };
+			float2 topPoint = { activeEdge.x, activeEdge.y };
+			float2 bottomPoint = { activeEdge.z, activeEdge.w };
 
 			if (topPoint.y - bottomPoint.y == 0) continue;
 
-			float slope = (float)(topPoint.y - bottomPoint.y) / (float)(topPoint.x - bottomPoint.x);
+			float slope = (topPoint.y - bottomPoint.y) / (topPoint.x - bottomPoint.x);
 
-			int xIntersection = bottomPoint.x + (int)((float)(verticalPixel - bottomPoint.y) / slope);
+			float xIntersection = bottomPoint.x + (float)(scanline - bottomPoint.y) / slope;
 			xIntersections.add(xIntersection);
 		}
 
@@ -84,12 +85,29 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 		// fill scanline
 		for (int i = 0; i < xIntersections.length - 1; i += 2)
 		{
-			int xFrom = xIntersections.get(i);
-			int xTo = xIntersections.get(i + 1);
+			float xFromPoint = xIntersections.get(i);
+			int xFromPixel = (int)xFromPoint;
 
-			for (int j = xFrom; j <= xTo; j++)
+			float xToPoint = xIntersections.get(i + 1);
+			int xToPixel = (int)xToPoint;
+
+			ubyte leftCornerColor = (ubyte)(pixelWeightPerIteration * (ubyte)((float)((float)(xFromPixel + 1) - xFromPoint)));
+
+			if (xFromPixel == xToPixel)
 			{
-				rasterizedGlyph.bitmap[j + verticalPixel * width] = colorToFill;
+				rasterizedGlyph.bitmap[xFromPixel + (int)scanline * width] += leftCornerColor;
+			}
+			else
+			{
+				rasterizedGlyph.bitmap[xFromPixel + (int)scanline * width] += leftCornerColor;
+
+				for (int j = xFromPixel + 1; j < xToPixel; j++)
+				{
+					rasterizedGlyph.bitmap[j + (int)scanline * width] += (ubyte)pixelWeightPerIteration;
+				}
+
+				ubyte rightCornerColor = (ubyte)(pixelWeightPerIteration * (ubyte)((float)(xToPoint - (float)xToPixel)));
+				rasterizedGlyph.bitmap[xToPixel + (int)scanline * width] += rightCornerColor;
 			}
 		}
 	}
@@ -101,7 +119,7 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 
 RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 {
-	ubyte4 color = { 0, 0, 0, 0 };
+	//ubyte4 color = { 0, 0, 0, 0 };
 	RasterizedGlyph rasterizedGlyph;
 	rasterizedGlyph.code = fontGlyph.code;
 
@@ -113,81 +131,85 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 	fontGlyphWidth = (int)((float)fontGlyphWidth * scaleRatio);
 	fontGlyphHeight = glyphPixelsHeight;
 
-	rasterizedGlyph.bitmapSize = { fontGlyphWidth + 1, fontGlyphHeight + 1 };
+	rasterizedGlyph.bitmapSize = { fontGlyphWidth + 2, fontGlyphHeight + 1 };
 
 	// Scale points to the desired rasterized size
 	// and remove duplicated points
-	SimpleDynamicArray<SimpleDynamicArray<int2>> scaledContours = SimpleDynamicArray<SimpleDynamicArray<int2>>(fontGlyph.contours.length);
-	bool* duplicatedPointsMap = (bool*)malloc(rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
-	ZeroMemory(duplicatedPointsMap, rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
+	SimpleDynamicArray<SimpleDynamicArray<float2>> scaledContours = SimpleDynamicArray<SimpleDynamicArray<float2>>(fontGlyph.contours.length);
+	//bool* duplicatedPointsMap = (bool*)malloc(rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
+	//ZeroMemory(duplicatedPointsMap, rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
 
 	for (int i = 0; i < fontGlyph.contours.length; i++)
 	{
 		SimpleDynamicArray<int2> contour = fontGlyph.contours.get(i);
-		SimpleDynamicArray<int2> scaledContour = SimpleDynamicArray<int2>(contour.length);
+		SimpleDynamicArray<float2> scaledContour = SimpleDynamicArray<float2>(contour.length);
 
 		for (int j = 0; j < contour.length; j++)
 		{
 			int2 point = contour.get(j);
+			float2 scaledPoint = { (float)point.x, (float)point.y };
 
-			point.x -= fontGlyph.coordsRect.x;
-			point.y -= fontGlyph.coordsRect.y;
+			scaledPoint.x -= fontGlyph.coordsRect.x;
+			scaledPoint.y -= fontGlyph.coordsRect.y;
 
-			point.x = (int)((float)point.x * scaleRatio);
-			point.y = (int)((float)point.y * scaleRatio);
+			scaledPoint.x *= scaleRatio;
+			scaledPoint.y *= scaleRatio;
 
-			if (!duplicatedPointsMap[point.x + point.y * rasterizedGlyph.bitmapSize.x])
+			/*if (!duplicatedPointsMap[point.x + point.y * rasterizedGlyph.bitmapSize.x])
 			{
 				duplicatedPointsMap[point.x + point.y * rasterizedGlyph.bitmapSize.x] = true;
 				scaledContour.add(point);
-			}
+			}*/
+
+			scaledContour.add(scaledPoint);
 		}
 
-		if (scaledContour.length > 0)
+		/*if (scaledContour.length > 0)
 		{
 			scaledContours.add(scaledContour);
-		}
+		}*/
+		scaledContours.add(scaledContour);
 	}
-	free(duplicatedPointsMap);
+	//free(duplicatedPointsMap);
 
 	// Since we removed all duplicated points, we also removed first and last points, that should be the same (in order to have closed polygon)
 	for (int i = 0; i < scaledContours.length; i++)
 	{
-		SimpleDynamicArray<int2>* contour = scaledContours.getPointer(i);
+		SimpleDynamicArray<float2>* contour = scaledContours.getPointer(i);
 
 		contour->add(contour->get(0));
 	}
 
-	rasterizedGlyph.bitmap = (ubyte4*)malloc(4 * rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
+	rasterizedGlyph.bitmap = (ubyte*)malloc(rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
 
-	FillBitmapWithWhite(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize);
+	//FillBitmapWithWhite(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize);
 
 	// black background
-	//ZeroMemory(rasterizedGlyph.bitmap, 4 * rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
+	ZeroMemory(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
 
 	//> create outlline of glyph
 	// Uncomment to create outline of points
 	//for (int i = 0; i < scaledContours.length; i++)
 	//{
-	//	SimpleDynamicArray<int2> contour = scaledContours.get(i);
+	//	SimpleDynamicArray<float2> contour = scaledContours.get(i);
 	//	SimpleDynamicArray<int2> scaledContour = SimpleDynamicArray<int2>(contour.length);
 
 	//	for (int j = 0; j < contour.length - 1; j++)
 	//	{
-	//		int2 point = contour.get(j);
-	//		int2 nextPoint = contour.get(j + 1);
+	//		float2 point = contour.get(j);
+	//		float2 nextPoint = contour.get(j + 1);
 
 	//		// plot a single point
 	//		//rasterizedGlyph.bitmap[point.x + point.y * rasterizedGlyph.bitmapSize.x] = { 255, 0, 0, 0 };
 
 	//		int4 boundaries = { 0, 0, rasterizedGlyph.bitmapSize.x, rasterizedGlyph.bitmapSize.y };
 	//		DrawLine(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
-	//			boundaries, point, nextPoint, { 123, 0, 0 });
+	//			boundaries, { (int)point.x, (int)point.y }, { (int)nextPoint.x, (int)nextPoint.y }, { 123, 0, 0 });
 	//	}
 	//}
 	//<
 
-	FillClosedPolygon(rasterizedGlyph, &scaledContours, color);
+	FillClosedPolygon(rasterizedGlyph, &scaledContours);
 
 	for (int i = 0; i < scaledContours.length; i++)
 	{
@@ -209,10 +231,17 @@ HashTable<RasterizedGlyph> RasterizeFontGlyphs(FontData* font, int lineHeight)
 	HashTableItem<int, FontGlyph> fontGlyph;
 	while (font->glyphs.getNext(&fontGlyph))
 	{
+		float scaleRatio = (float)lineHeight / (float)maxHeight;
+
 		int glyphHeight = fontGlyph.value.coordsRect.w - fontGlyph.value.coordsRect.y;
-		int glyphScaledHeight = (int)((float)glyphHeight * (float)lineHeight / (float)maxHeight);
-		
+		int glyphScaledHeight = (int)((float)glyphHeight * scaleRatio);
+
 		RasterizedGlyph rasterizedGlyph = RasterizeFontGlyph(fontGlyph.value, glyphScaledHeight);
+
+		rasterizedGlyph.position = {
+			(int)(scaleRatio * fontGlyph.value.coordsRect.x),
+			(int)(scaleRatio * fontGlyph.value.coordsRect.y)
+		};
 
 		rasterizedGlyphs.set(fontGlyph.key, rasterizedGlyph);
 	}
@@ -706,7 +735,7 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 					p2.x = p1.x + (int)((float)(p2.x - p1.x) / 2.0f);
 					p2.y = p1.y + (int)((float)(p2.y - p1.y) / 2.0f);
 				}
-				pointsGenerated += GenerateBezierCurve(p0, p1, p2, 30, &contourPoints);
+				pointsGenerated += GenerateBezierCurve(p0, p1, p2, 5, &contourPoints);
 			}
 
 			int2 firstPointInContor = contourPoints.get(contourPoints.length - pointsGenerated);

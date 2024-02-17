@@ -56,7 +56,7 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	windowData->windowBitmapInfo.bmiHeader.biYPelsPerMeter = 0;
 	windowData->windowBitmapInfo.bmiHeader.biClrUsed = 0;
 	windowData->windowBitmapInfo.bmiHeader.biClrImportant = 0;
-	
+
 	windowData->drawingBitmapInfo.bmiHeader.biSize = sizeof(windowData->drawingBitmapInfo.bmiHeader);
 	windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->drawingBitmapSize.x;
 	windowData->drawingBitmapInfo.bmiHeader.biHeight = windowData->drawingBitmapSize.y;
@@ -286,6 +286,38 @@ void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 bottomLeft, i
 		{
 			windowData->windowBitmap[bottomLeft.x + x + (bottomLeft.y + y) * windowData->windowClientSize.x]
 				= bitmapToCopy[x + y * bitmapSize.x];
+		}
+	}
+}
+
+void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
+	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize)
+{
+	int width = sourceBitmapSize.x;
+	int height = sourceBitmapSize.y;
+
+	if (width > destBitmapSize.x - destXY.x)
+	{
+		width = destBitmapSize.x - destXY.x;
+	}
+
+	if (height > destBitmapSize.y - destXY.y)
+	{
+		height = destBitmapSize.y - destXY.y;
+	}
+
+	for (int y = 0; y < height; y++)
+	{
+		int yDest = destXY.y + y;
+		for (int x = 0; x < width; x++)
+		{
+			ubyte sourceColor = 255 - sourceBitmap[x + y * sourceBitmapSize.x];
+
+			if (sourceColor == 255) continue;
+
+			int xDest = destXY.x + x;
+
+			destBitmap[xDest + yDest * destBitmapSize.x] = { sourceColor,sourceColor,sourceColor,sourceColor };
 		}
 	}
 }

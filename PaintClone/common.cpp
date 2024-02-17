@@ -24,3 +24,21 @@ void BubbleSort(SimpleDynamicArray<int>* arr)
 		}
 	}
 }
+
+void BubbleSort(SimpleDynamicArray<float>* arr)
+{
+	for (int i = 0; i < arr->length - 1; i++)
+	{
+		for (int j = i + 1; j < arr->length; j++)
+		{
+			float* a = arr->getPointer(i);
+			float* b = arr->getPointer(j);
+
+			if (*a > *b) {
+				*a += *b;
+				*b = *a - *b;
+				*a -= *b;
+			}
+		}
+	}
+}

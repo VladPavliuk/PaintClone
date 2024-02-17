@@ -24,8 +24,9 @@ struct FontData
 struct RasterizedGlyph
 {
 	wchar_t code;
+	int2 position;
 	int2 bitmapSize;
-	ubyte4* bitmap;
+	ubyte* bitmap;
 
 	// TEMPORARY FOR TESTING
 	//SimpleDynamicArray<SimpleDynamicArray<int2>> contours;

@@ -26,3 +26,6 @@ inline void DrawPixel(ubyte4* bitmap, int2 bitmapSize, int2 pixelCoord, ubyte3 c
 void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 topLeft, int2 bitmapSize);
 void CopyBitmapToBitmap(ubyte4* sourceBitmap, int2 sourceBitmapSize,
 	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize);
+
+void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
+	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize);

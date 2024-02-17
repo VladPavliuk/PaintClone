@@ -7,14 +7,17 @@
 
 void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 {
-	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
+	const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\timesi.ttf";
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\times.ttf";
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\timesbi.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\calibri.ttf"; // THIS ONE HAS COMPLEX CONTOURS
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\Candarai.ttf"; // THIS ONE HAS COMPLEX CONTOURS
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\corbel.ttf"; // THIS ONE HAS COMPLEX CONTOURS
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\comicbd.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\segoeuiz.ttf";
 	//const wchar_t* fontFilePath = L"Envy Code R.ttf";
-	const wchar_t* fontFilePath = L"ShadeBlue-2OozX.ttf";
+	//const wchar_t* fontFilePath = L"ShadeBlue-2OozX.ttf";
 
 	//> testing fonts
 	//wchar_t alphabetStr[] = L"АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя !\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
@@ -41,9 +44,10 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 		fontGlyph.value.contours.freeMemory();
 	}
 	glyphs.freeMemory();*/
-
+	
+	int verticalSize = 100;
 	double timeDelta2 = GetCurrentTimestamp(windowData);
-	HashTable<RasterizedGlyph> rasterizedGlyphs = RasterizeFontGlyphs(&font, 100);
+	HashTable<RasterizedGlyph> rasterizedGlyphs = RasterizeFontGlyphs(&font, verticalSize);
 
 	timeDelta2 = GetCurrentTimestamp(windowData) - timeDelta2;
 	char buff[100];
@@ -52,16 +56,16 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 
 	//RasterizedGlyph glyph = rasterizedGlyphs.get(L'a');
 
-	int2 bottomLeft = { 0,0 };
-	int verticalSize = 100;
+	int2 bottomLeft = { 0,30 };
 	for (int i = 0; i < alphabet.length; i++)
 	{
-		//int2 prevBottomLeft = bottomLeft;
 		wchar_t code = alphabet.get(i);
 
 		RasterizedGlyph rasterizedGlyph = rasterizedGlyphs.get(code);
 
-		CopyBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize, windowData->drawingBitmap, bottomLeft, windowData->drawingBitmapSize);
+		int2 position = { bottomLeft.x + rasterizedGlyph.position.x, bottomLeft.y + rasterizedGlyph.position.y };
+		
+		CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize, windowData->drawingBitmap, position, windowData->drawingBitmapSize);
 
 		if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
 
@@ -263,7 +267,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 	InitRenderer(&windowData, hwnd);
 
-	//RasterizeTestingFontAndPutOnCanvas(&windowData);
+	RasterizeTestingFontAndPutOnCanvas(&windowData);
 	
 	windowData.toolTiles = SimpleDynamicArray<ToolTile>(10);
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::PENCIL_TOOL, DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp")));

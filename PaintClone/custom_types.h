@@ -8,6 +8,12 @@ struct int2
 	int y;
 };
 
+struct float2
+{
+	float x;
+	float y;
+};
+
 struct char3
 {
 	char x;
@@ -43,6 +49,16 @@ struct ubyte4
 	ubyte z;
 	ubyte w;
 
+	ubyte4& operator+=(ubyte4 const& b)
+	{
+		x += b.x;
+		y += b.y;
+		z += b.z;
+		w += b.w;
+		return *this;
+		//return { (ubyte)(x + b.x), (ubyte)(y + b.y), (ubyte)(z + b.z), (ubyte)(w + b.w) };
+	}
+
 	bool operator==(ubyte4 const& b)
 	{
 		return x == b.x && y == b.y && z == b.z && w == b.w;
@@ -62,6 +78,14 @@ struct ubyte2
 
 typedef unsigned short ushort;
 typedef unsigned int uint;
+
+struct float4
+{
+	float x;
+	float y;
+	float z;
+	float w;
+};
 
 struct int4
 {
