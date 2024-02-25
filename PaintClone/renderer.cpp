@@ -87,7 +87,7 @@ void ValidateDrawingOffset(WindowData* windowData)
 	else
 	{
 		int drawingZoneOffsetY = windowData->drawingZoomLevel * windowData->drawingBitmapSize.y
-			- windowData->drawingZone.size.y - windowData->drawingOffset.y;
+			- windowData->drawingZone.size().y - windowData->drawingOffset.y;
 
 		if (drawingZoneOffsetY < 0)
 		{
@@ -102,7 +102,7 @@ void ValidateDrawingOffset(WindowData* windowData)
 	else
 	{
 		int drawingZoneOffsetX = windowData->drawingZoomLevel * windowData->drawingBitmapSize.x
-			- windowData->drawingZone.size.x - windowData->drawingOffset.x;
+			- windowData->drawingZone.size().x - windowData->drawingOffset.x;
 
 		if (drawingZoneOffsetX < 0)
 		{
@@ -113,25 +113,22 @@ void ValidateDrawingOffset(WindowData* windowData)
 
 void CalculateDrawingZoneSize(WindowData* windowData)
 {
-	windowData->drawingZone.size.x = windowData->drawingBitmapSize.x;
-	windowData->drawingZone.size.y = windowData->drawingBitmapSize.y;
+	windowData->drawingZone.zw(windowData->drawingZone.xy() + windowData->drawingBitmapSize);
 
-	windowData->drawingZone.UpdateTopRight();
-
-	if (windowData->drawingZone.z > windowData->windowClientSize.x - windowData->drawingZoneCornerResize.size.x)
+	int2 drawingZoneCornerResizeSize = windowData->drawingZoneCornerResize.size();
+	if (windowData->drawingZone.z > windowData->windowClientSize.x - drawingZoneCornerResizeSize.x)
 	{
-		windowData->drawingZone.z = windowData->windowClientSize.x - windowData->drawingZoneCornerResize.size.x;
+		windowData->drawingZone.z = windowData->windowClientSize.x - drawingZoneCornerResizeSize.x;
 	}
 
-	if (windowData->drawingZone.w > windowData->windowClientSize.y - windowData->drawingZoneCornerResize.size.y)
+	if (windowData->drawingZone.w > windowData->windowClientSize.y - drawingZoneCornerResizeSize.y)
 	{
-		windowData->drawingZone.w = windowData->windowClientSize.y - windowData->drawingZoneCornerResize.size.y;
+		windowData->drawingZone.w = windowData->windowClientSize.y - drawingZoneCornerResizeSize.y;
 	}
-	windowData->drawingZone.UpdateSize();
 
-	windowData->drawingZoneCornerResize.x = windowData->drawingZone.z;
-	windowData->drawingZoneCornerResize.y = windowData->drawingZone.w;
-	windowData->drawingZoneCornerResize.UpdateTopRight();
+	windowData->drawingZoneCornerResize.xy(windowData->drawingZone.zw());
+
+	windowData->drawingZoneCornerResize.zw(windowData->drawingZoneCornerResize.xy() + drawingZoneCornerResizeSize);
 }
 
 void FillBitmapWithWhite(ubyte4* bitmap, int2 bitmapSize)
@@ -176,6 +173,145 @@ void DrawLine(ubyte4* bitmap, int2 bitmapSize, int4 bitmapRect, int2 from, int2 
 			from.y += sy;
 		}
 	}
+}
+
+void CopyTextBufferToCanvas(WindowData* windowData)
+{
+	int4 textBlockOnCanvas = windowData->textBlockOnClient;
+
+	textBlockOnCanvas.xy(textBlockOnCanvas.xy() - windowData->drawingZone.xy());
+	textBlockOnCanvas.zw(textBlockOnCanvas.zw() - windowData->drawingZone.xy());
+	
+	textBlockOnCanvas.xy(textBlockOnCanvas.xy() + windowData->drawingOffset);
+	textBlockOnCanvas.zw(textBlockOnCanvas.zw() + windowData->drawingOffset);
+
+	textBlockOnCanvas /= windowData->drawingZoomLevel;
+
+	int2 bottomLeft = { windowData->textBlockOnClient.x, 
+		windowData->textBlockOnClient.w - windowData->fontData.lineHeight * windowData->drawingZoomLevel };
+	bottomLeft -= { windowData->drawingZone.x, windowData->drawingZone.y };
+	bottomLeft += windowData->drawingOffset;
+	bottomLeft /= windowData->drawingZoomLevel;
+
+	for (int i = 0; i < windowData->textBuffer.length; i++)
+	{
+		wchar_t code = windowData->textBuffer.chars[i];
+		RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
+
+		int2 position = {
+			bottomLeft.x + rasterizedGlyph.leftSideBearings,
+			bottomLeft.y + rasterizedGlyph.boundaries.y + -windowData->fontData.descent
+		};
+
+		if (rasterizedGlyph.hasBitmap)
+		{
+			CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
+				windowData->drawingBitmap, position, windowData->drawingBitmapSize);
+		}
+		//if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
+
+		bottomLeft.x += rasterizedGlyph.advanceWidth;
+
+		int nextSymbolWidth = 0;
+		if (i < windowData->textBuffer.length - 1)
+		{
+			wchar_t nextCode = windowData->textBuffer.chars[i + 1];
+			RasterizedGlyph nextRasterizedGlyph = windowData->fontData.glyphs.get(nextCode);
+			nextSymbolWidth = nextRasterizedGlyph.advanceWidth;
+		}
+
+		if (bottomLeft.x + nextSymbolWidth > textBlockOnCanvas.z)
+		{
+			bottomLeft.y -= windowData->fontData.lineHeight;
+			textBlockOnCanvas.y = bottomLeft.y;
+
+			if (textBlockOnCanvas.y < windowData->drawingZone.y)
+			{
+				break;
+			}
+			bottomLeft.x = textBlockOnCanvas.x;
+		}
+	}
+}
+
+void DrawTextBufferToClient(WindowData* windowData)
+{
+	if (!windowData->isTextEnteringMode)
+	{
+		return;
+	}
+
+	//DynamicArray<DynamicArray<int2>> symbolsLocations = DynamicArray<DynamicArray<int2>>(10);
+	//symbolsLocations.add(DynamicArray<int2>(10)); // create first line
+	//int currentLineIndex = 0;
+
+	int lineHeight = windowData->drawingZoomLevel * windowData->fontData.lineHeight;
+	int2 bottomLeft = { windowData->textBlockOnClient.x, windowData->textBlockOnClient.w - lineHeight };
+	for (int i = 0; i < windowData->textBuffer.length; i++)
+	{
+		if (i == windowData->cursorBufferPosition)
+		{
+			DrawRect(windowData, bottomLeft.x + 1, bottomLeft.y, 1, lineHeight, { 0,0,0 });
+		}
+
+		wchar_t code = windowData->textBuffer.chars[i];
+		RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
+
+		int2 position = {
+			bottomLeft.x + rasterizedGlyph.leftSideBearings * windowData->drawingZoomLevel,
+			bottomLeft.y + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * windowData->drawingZoomLevel };
+
+		if (rasterizedGlyph.hasBitmap)
+		{
+			CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
+				windowData->windowBitmap, position, windowData->windowClientSize, windowData->drawingZoomLevel);
+		}
+		//if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
+
+		//symbolsLocations.get(currentLineIndex);
+		bottomLeft.x += rasterizedGlyph.advanceWidth * windowData->drawingZoomLevel;
+
+		int nextSymbolWidth = 0;
+		if (i < windowData->textBuffer.length - 1)
+		{
+			wchar_t nextCode = windowData->textBuffer.chars[i + 1];
+			RasterizedGlyph nextRasterizedGlyph = windowData->fontData.glyphs.get(nextCode);
+			nextSymbolWidth = nextRasterizedGlyph.advanceWidth * windowData->drawingZoomLevel;
+		}
+
+		if (bottomLeft.x + nextSymbolWidth > windowData->textBlockOnClient.z)
+		{
+			bottomLeft.y -= lineHeight;
+
+			windowData->textBlockOnClient.y = bottomLeft.y;
+
+			if (windowData->textBlockOnClient.y < windowData->drawingZone.y)
+			{
+				windowData->textBlockOnClient.y = windowData->drawingZone.y;
+				break;
+			}
+			bottomLeft.x = windowData->textBlockOnClient.x;
+		}
+	}
+
+	DrawBorderRect(windowData,
+		windowData->textBlockOnClient.xy(),
+		windowData->textBlockOnClient.size(), 1, { 0,255,0 });
+
+	if (windowData->textBuffer.length == -1)
+	{
+		DrawRect(windowData, bottomLeft.x, bottomLeft.y, 1, lineHeight, { 0,0,0 });
+	}
+	else if (windowData->textBuffer.length == windowData->cursorBufferPosition)
+	{
+		DrawRect(windowData, bottomLeft.x, bottomLeft.y, 1, lineHeight, { 0,0,0 });
+	}
+
+	//for (int i = 0; i < symbolsLocations.length; i++)
+	//{
+	//	symbolsLocations.get(i).freeMemory();
+	//}
+	//symbolsLocations.freeMemory();
 }
 
 void DrawRect(WindowData* windowData, int x, int y, int width, int height, ubyte3 color)
@@ -291,7 +427,7 @@ void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 bottomLeft, i
 }
 
 void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
-	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize)
+	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int zoom)
 {
 	int width = sourceBitmapSize.x;
 	int height = sourceBitmapSize.y;
@@ -308,16 +444,22 @@ void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
 
 	for (int y = 0; y < height; y++)
 	{
-		int yDest = destXY.y + y;
+		int yDest = destXY.y + y * zoom;
 		for (int x = 0; x < width; x++)
 		{
 			ubyte sourceColor = 255 - sourceBitmap[x + y * sourceBitmapSize.x];
 
 			if (sourceColor == 255) continue;
 
-			int xDest = destXY.x + x;
+			int xDest = destXY.x + x * zoom;
 
-			destBitmap[xDest + yDest * destBitmapSize.x] = { sourceColor,sourceColor,sourceColor,sourceColor };
+			for (int innerY = 0; innerY < zoom; innerY++)
+			{
+				for (int innerX = 0; innerX < zoom; innerX++)
+				{
+					destBitmap[innerX + xDest + (innerY + yDest) * destBitmapSize.x] = { sourceColor, sourceColor, sourceColor, sourceColor };
+				}
+			}
 		}
 	}
 }

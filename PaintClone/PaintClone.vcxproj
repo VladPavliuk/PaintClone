@@ -158,6 +158,7 @@
     <ClInclude Include="queue.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="fonts.h" />
+    <ClInclude Include="string.h" />
     <ClInclude Include="ui.h" />
     <ClInclude Include="window_data.h" />
   </ItemGroup>

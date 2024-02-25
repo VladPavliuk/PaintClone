@@ -22,11 +22,8 @@ void InitWindowData(WindowData* windowData)
 	windowData->drawingBitmapSize = { 800, 800 };
 
 	windowData->drawingZone = { 35, 35, 35, 35 };
-	windowData->drawingZone.UpdateSize();
 
-	windowData->drawingZoneCornerResize = { 0, 0, 0, 0 };
-	windowData->drawingZoneCornerResize.size = { 10, 10 };
-	windowData->drawingZoneCornerResize.UpdateTopRight();
+	windowData->drawingZoneCornerResize = { 0, 0, 10, 10 };
 
 	windowData->drawingZoomLevel = 1;
 	windowData->drawingOffset = { 0, 0 };
@@ -43,4 +40,11 @@ void InitWindowData(WindowData* windowData)
 	windowData->mousePosition = { 0,0 };
 	windowData->selectedColor = { 0,0,0 };
 	windowData->selectedTool = DRAW_TOOL::PENCIL;
+
+	windowData->isTextEnteringMode = false;
+	windowData->isValidVirtualKeycodeForText = false;
+	windowData->textBuffer = WideString(L"");
+	//ZeroMemory(windowData->textBuffer, 200);
+	windowData->textBlockOnClient = { -1,-1,-1,-1 };
+	windowData->cursorBufferPosition = -1;
 }

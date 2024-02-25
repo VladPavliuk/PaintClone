@@ -5,31 +5,54 @@
 #include "hash_table.h"
 #include "math.h"
 #include "common.h"
-#include "renderer.h"
+//#include "renderer.h"
 
 struct FontGlyph
 {
 	wchar_t code;
 	int4 coordsRect;
+	int leftSideBearings;
+	int advanceWidth;
+
+	bool hasContours; // only whitespace chars have no contours
 
 	SimpleDynamicArray<SimpleDynamicArray<int2>> contours; // contours a list of closed polygons
 };
 
 struct FontData
 {
-	int4 maxBoundaries;
 	HashTable<FontGlyph> glyphs;
+	int4 maxBoundaries;
+	int lineHeight;
+	int ascent;
+	int descent;
+	int lineGap;
 };
 
 struct RasterizedGlyph
 {
 	wchar_t code;
-	int2 position;
-	int2 bitmapSize;
+	int4 boundaries;
+	int leftSideBearings;
+	int advanceWidth;
+
+	bool hasBitmap; // only whitespace chars have bitmap
+	
 	ubyte* bitmap;
+	int2 bitmapSize;
 
 	// TEMPORARY FOR TESTING
 	//SimpleDynamicArray<SimpleDynamicArray<int2>> contours;
+};
+
+struct FontDataRasterized
+{
+	HashTable<RasterizedGlyph> glyphs;
+	//int4 maxBoundaries;
+	int lineHeight;
+	int ascent;
+	int descent;
+	int lineGap;
 };
 
 //> TTF structs
@@ -77,6 +100,39 @@ struct TTFheadTableHeader
 	short glyphDataFormat;
 };
 #pragma pack(pop)
+
+struct TTFhheaTable
+{
+	ushort majorVersion;
+	ushort minorVersion;
+	short ascender;
+	short descender;
+	short lineGap;
+	ushort advanceWidthMax;
+	short minLeftSideBearing;
+	short minRightSideBearing;
+	short xMaxExtent;
+	short caretSlopeRise;
+	short caretSlopeRun;
+	short caretOffset;
+	short reserved1;
+	short reserved2;
+	short reserved3;
+	short reserved4;
+	short metricDataFormat;
+	ushort numberOfHMetrics;
+};
+
+struct TTFlongHorMetricRecord
+{
+	ushort advanceWidth;
+	short lsb;
+};
+
+struct TTFhmtxTable
+{
+	SimpleDynamicArray<TTFlongHorMetricRecord> hMetrics;
+};
 
 struct TTFlocaTableShort
 {
@@ -172,6 +228,6 @@ struct TTFSimpleGlyph
 };
 //<
 
-RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight);
-HashTable<RasterizedGlyph> RasterizeFontGlyphs(FontData* font, int lineHeight);
+void RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight, ubyte** bitmap, int2* bitmapSize);
+FontDataRasterized RasterizeFontGlyphs(FontData* font, int lineHeight);
 FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>* alphabet);

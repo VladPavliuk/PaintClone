@@ -7,13 +7,16 @@
 #include "dynamic_array.h"
 #include "queue.h"
 #include "bmp_images.h"
+#include "fonts.h"
+#include "string.h"
 
 enum class DRAW_TOOL
 {
 	UNDEFINED,
 	PENCIL,
 	FILL,
-	ZOOM
+	ZOOM,
+	TEXT
 };
 
 enum class UI_ELEMENT
@@ -29,6 +32,7 @@ enum class UI_ELEMENT
 	PENCIL_TOOL,
 	FILL_TOOL,
 	ZOOM_TOOL,
+	TEXT_TOOL,
 
 	COLOR_BRUCH_1,
 	COLOR_BRUCH_2,
@@ -74,8 +78,8 @@ struct WindowData
 	ubyte4* drawingBitmap;
 	int2 drawingBitmapSize;
 
-	Rect drawingZone; // relative to client rect
-	Rect drawingZoneCornerResize; // relative to client rect
+	int4 drawingZone; // relative to client rect
+	int4 drawingZoneCornerResize; // relative to client rect
 
 	int drawingZoomLevel;
 	int2 drawingOffset; // relative to bottom-left point
@@ -99,7 +103,12 @@ struct WindowData
 	UI_ELEMENT sumbitedOnAnyHotUi; // ui element that is set when press and release happens on any ui element
 	//<
 
-	//bool isDrawing;
+	FontDataRasterized fontData;
+	bool isTextEnteringMode;
+	bool isValidVirtualKeycodeForText;
+	int4 textBlockOnClient;
+	WideString textBuffer; // TODO: make it dyanmic
+	int cursorBufferPosition;
 
 	DRAW_TOOL selectedTool;
 	//SimpleDynamicArray<BmpImage> toolsImages;

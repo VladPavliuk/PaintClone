@@ -42,3 +42,25 @@ void BubbleSort(SimpleDynamicArray<float>* arr)
 		}
 	}
 }
+
+wchar_t* GetTextFromClipBoard(HWND hwnd)
+{
+	if (!IsClipboardFormatAvailable(CF_UNICODETEXT) || !OpenClipboard(hwnd))
+	{
+		return 0;
+	}
+
+	HANDLE clipboardHandle = GetClipboardData(CF_UNICODETEXT);
+
+	if (clipboardHandle == 0)
+	{
+		return 0;
+	}
+
+	wchar_t* data = (wchar_t*)GlobalLock(clipboardHandle);
+
+	GlobalUnlock(clipboardHandle);
+	CloseClipboard();
+
+	return data;
+}

@@ -21,6 +21,39 @@ void HandleUiElements(WindowData* windowData)
 			FillFromPixel(windowData, pixelToStart, windowData->selectedColor);
 			break;
 		}
+		case DRAW_TOOL::TEXT:
+		{
+			//int2 locationOnCanvas = windowData->mousePosition;
+
+			//locationOnCanvas = ConvertFromScreenToDrawingCoords(windowData, locationOnCanvas);
+
+			if (!IsInRect(windowData->drawingZone, windowData->mousePosition))
+			{
+				break;
+			}
+
+			int defaultTextBlockWidth = 100 * windowData->drawingZoomLevel;
+			int defaultTextBlockHeight = windowData->fontData.lineHeight * windowData->drawingZoomLevel;
+			int4 textBlockRect;
+			textBlockRect.x = windowData->mousePosition.x;
+			textBlockRect.y = windowData->mousePosition.y;
+			textBlockRect.z = minInt(textBlockRect.x + defaultTextBlockWidth, windowData->drawingZone.z);
+			textBlockRect.w = minInt(textBlockRect.y + defaultTextBlockHeight, windowData->drawingZone.w);
+
+			int test = (textBlockRect.x - windowData->drawingZone.x) % windowData->drawingZoomLevel;
+			int test2 = (textBlockRect.y - windowData->drawingZone.y) % windowData->drawingZoomLevel;
+			
+			textBlockRect.x -= test;
+			textBlockRect.y -= test2;
+			textBlockRect.z -= test;
+			textBlockRect.w -= test2;
+
+			windowData->isTextEnteringMode = true;
+			windowData->textBlockOnClient = textBlockRect;
+
+			windowData->cursorBufferPosition = 0;
+			break;
+		}
 		}
 		break;
 	}
@@ -44,6 +77,11 @@ void HandleUiElements(WindowData* windowData)
 		}
 
 		ValidateDrawingOffset(windowData);
+		break;
+	}
+	case UI_ELEMENT::TEXT_TOOL:
+	{
+		windowData->selectedTool = DRAW_TOOL::TEXT;
 		break;
 	}
 	case UI_ELEMENT::COLOR_BRUCH_1:
@@ -79,8 +117,7 @@ void HandleUiElements(WindowData* windowData)
 	{
 		// recalculate new drawing bitmap size
 		int2 previousBitmapSize = windowData->drawingBitmapSize;
-		windowData->drawingBitmapSize.x = windowData->drawingZoneCornerResize.x - windowData->drawingZone.x;
-		windowData->drawingBitmapSize.y = windowData->drawingZoneCornerResize.y - windowData->drawingZone.y;
+		windowData->drawingBitmapSize = windowData->drawingZoneCornerResize.xy() - windowData->drawingZone.xy();
 
 		CalculateDrawingZoneSize(windowData);
 
@@ -113,13 +150,15 @@ void HandleUiElements(WindowData* windowData)
 	}
 	case UI_ELEMENT::CANVAS_CORNER_RESIZE:
 	{
-		windowData->drawingZoneCornerResize.x = windowData->mousePosition.x - windowData->activeUiOffset.x;
-		windowData->drawingZoneCornerResize.y = windowData->mousePosition.y - windowData->activeUiOffset.y;
-		windowData->drawingZoneCornerResize.UpdateTopRight();
+		int2 drawingZoneCornerResizeSize = windowData->drawingZoneCornerResize.size();
+		
+		windowData->drawingZoneCornerResize.xy(windowData->mousePosition - windowData->activeUiOffset);
+		
+		windowData->drawingZoneCornerResize.zw(windowData->drawingZoneCornerResize.xy() + drawingZoneCornerResizeSize);
 
 		if (windowData->drawingZoneCornerResize.z > windowData->windowClientSize.x)
 		{
-			windowData->drawingZoneCornerResize.x = windowData->windowClientSize.x - windowData->drawingZoneCornerResize.size.x;
+			windowData->drawingZoneCornerResize.x = windowData->windowClientSize.x - windowData->drawingZoneCornerResize.size().x;
 		}
 		else if (windowData->drawingZoneCornerResize.x < windowData->drawingZone.x + 1)
 		{
@@ -129,7 +168,7 @@ void HandleUiElements(WindowData* windowData)
 
 		if (windowData->drawingZoneCornerResize.w > windowData->windowClientSize.y)
 		{
-			windowData->drawingZoneCornerResize.y = windowData->windowClientSize.y - windowData->drawingZoneCornerResize.size.y;
+			windowData->drawingZoneCornerResize.y = windowData->windowClientSize.y - windowData->drawingZoneCornerResize.size().y;
 		}
 		else if (windowData->drawingZoneCornerResize.y < windowData->drawingZone.y + 1)
 		{
@@ -137,7 +176,7 @@ void HandleUiElements(WindowData* windowData)
 			windowData->drawingZoneCornerResize.y = windowData->drawingZone.y + 1;
 		}
 
-		windowData->drawingZoneCornerResize.UpdateTopRight();
+		windowData->drawingZoneCornerResize.zw(windowData->drawingZoneCornerResize.xy() + drawingZoneCornerResizeSize);
 		break;
 	}
 	case UI_ELEMENT::CANVAS_VERTICAL_SCROLL:
@@ -174,8 +213,8 @@ void HandleUiElements(WindowData* windowData)
 
 			drawingRect.x = 0;
 			drawingRect.y = 0;
-			drawingRect.z = windowData->drawingZone.size.x;
-			drawingRect.w = windowData->drawingZone.size.y;
+			drawingRect.z = windowData->drawingZone.size().x;
+			drawingRect.w = windowData->drawingZone.size().y;
 
 			drawingRect.x += windowData->drawingOffset.x;
 			drawingRect.y += windowData->drawingOffset.y;
@@ -205,7 +244,7 @@ void HandleUiElements(WindowData* windowData)
 void DrawDrawingCanvas(WindowData* windowData)
 {
 	DrawBorderRect(windowData, { windowData->drawingZone.x, windowData->drawingZone.y },
-		windowData->drawingZone.size, 2, { 255, 0, 0 });
+		windowData->drawingZone.size(), 2, {255, 0, 0});
 	DrawScrollsForDrawingZone(windowData);
 
 	CheckHotActiveForUiElement(windowData, {
@@ -221,7 +260,7 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 	ubyte3 scrollHoveredBgColor = { 120, 120, 120 };
 
 	// vertical bar
-	float drawingZoneToImageHeightRatio = (float)windowData->drawingZone.size.y
+	float drawingZoneToImageHeightRatio = (float)windowData->drawingZone.size().y
 		/ ((float)windowData->drawingBitmapSize.y * (float)windowData->drawingZoomLevel);
 
 	if (drawingZoneToImageHeightRatio < 1.0f)
@@ -231,12 +270,12 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 				windowData->drawingZone.x - scrollWidth,
 				(int)(drawingZoneToImageHeightRatio * windowData->drawingOffset.y) + windowData->drawingZone.y
 			},
-			{ scrollWidth, (int)(drawingZoneToImageHeightRatio * windowData->drawingZone.size.y) },
+			{ scrollWidth, (int)(drawingZoneToImageHeightRatio * windowData->drawingZone.size().y)},
 			scrollBgColor, scrollHoveredBgColor, UI_ELEMENT::CANVAS_VERTICAL_SCROLL);
 	}
 
 	// horizontal bar
-	float drawingZoneToImageWidthRatio = (float)windowData->drawingZone.size.x / ((float)windowData->drawingBitmapSize.x * (float)windowData->drawingZoomLevel);
+	float drawingZoneToImageWidthRatio = (float)windowData->drawingZone.size().x / ((float)windowData->drawingBitmapSize.x * (float)windowData->drawingZoomLevel);
 
 	if (drawingZoneToImageWidthRatio < 1.0f)
 	{
@@ -245,7 +284,7 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 				(int)(drawingZoneToImageWidthRatio * windowData->drawingOffset.x) + windowData->drawingZone.x,
 				windowData->drawingZone.y - scrollWidth,
 			},
-			{ (int)(drawingZoneToImageWidthRatio * windowData->drawingZone.size.x), scrollWidth },
+			{ (int)(drawingZoneToImageWidthRatio * windowData->drawingZone.size().x), scrollWidth},
 			scrollBgColor, scrollHoveredBgColor, UI_ELEMENT::CANVAS_HORIZONTAL_SCROLL);
 	}
 }
@@ -342,7 +381,7 @@ void DrawDraggableCornerOfDrawingZone(WindowData* windowData)
 {
 	DrawButton(windowData,
 		{ windowData->drawingZoneCornerResize.x, windowData->drawingZoneCornerResize.y },
-		windowData->drawingZoneCornerResize.size, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::CANVAS_CORNER_RESIZE);
+		windowData->drawingZoneCornerResize.size(), {100, 100, 100}, {150, 150, 150}, UI_ELEMENT::CANVAS_CORNER_RESIZE);
 }
 
 void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEMENT uiElement)

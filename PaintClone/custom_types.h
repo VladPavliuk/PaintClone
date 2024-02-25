@@ -6,6 +6,49 @@ struct int2
 {
 	int x;
 	int y;
+
+	int2 operator+(int2 a)
+	{
+		return { a.x + x, a.y + y };
+	}
+
+	int2& operator+=(int2 const& a)
+	{
+		x += a.x;
+		y += a.y;
+		return *this;
+	}
+
+	int2 operator-(int2 a)
+	{
+		return { x - a.x, y - a.y };
+	}
+
+	int2& operator-=(int2 const& a)
+	{
+		x -= a.x;
+		y -= a.y;
+		return *this;
+	}
+
+	int2 operator*(int a)
+	{
+		return { a * x, a * y };
+	}
+
+	int2& operator*=(int const& a)
+	{
+		x *= a;
+		y *= a;
+		return *this;
+	}
+
+	int2& operator/=(int const& a)
+	{
+		x /= a;
+		y /= a;
+		return *this;
+	}
 };
 
 struct float2
@@ -40,7 +83,7 @@ struct ubyte4
 	ubyte4()
 	{}
 
-	ubyte4(ubyte x, ubyte y, ubyte z, ubyte w):
+	ubyte4(ubyte x, ubyte y, ubyte z, ubyte w) :
 		x(x), y(y), z(z), w(w)
 	{}
 
@@ -93,29 +136,75 @@ struct int4
 	int y;
 	int z;
 	int w;
-};
 
-struct Rect
-{
-	int x;
-	int y;
-	int z;
-	int w;
-
-	int2 size;
-
-	void UpdateSize()
+	int2 xy()
 	{
-		size.x = z - x;
-		size.y = w - y;
-
-		assert(size.x >= 0);
-		assert(size.y >= 0);
+		return { x, y };
 	}
 
-	void UpdateTopRight()
+	void xy(int2 a)
 	{
-		z = x + size.x;
-		w = y + size.y;
+		x = a.x;
+		y = a.y;
+	}
+
+	void zw(int2 a)
+	{
+		z = a.x;
+		w = a.y;
+	}
+
+	int2 zw()
+	{
+		return { z, w };
+	}
+
+	int2 size()
+	{
+		return { z - x, w - y };
+	}
+
+	int4 operator*(float a)
+	{
+		return { (int)((float)x * a), (int)((float)y * a), (int)((float)z * a), (int)((float)w * a) };
+	}
+
+	int4& operator/=(float const& a)
+	{
+		x = (int)((float)x / a);
+		y = (int)((float)y / a);;
+		z = (int)((float)z / a);;
+		w = (int)((float)w / a);;
+		return *this;
 	}
 };
+
+//struct Rect
+//{
+//	int x;
+//	int y;
+//	int z;
+//	int w;
+//
+//	int2 size;
+//
+//	void UpdateSize()
+//	{
+//		size.x = z - x;
+//		size.y = w - y;
+//
+//		assert(size.x >= 0);
+//		assert(size.y >= 0);
+//	}
+//
+//	void UpdateTopRight()
+//	{
+//		z = x + size.x;
+//		w = y + size.y;
+//	}
+//
+//	int4 asInt4()
+//	{
+//		return { x, y, z, w };
+//	}
+//};

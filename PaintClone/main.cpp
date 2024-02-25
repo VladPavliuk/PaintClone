@@ -4,10 +4,11 @@
 #include <dwmapi.h>
 #include "fonts.h"
 #include "hash_table.h"
+#include "string.h"
 
 void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 {
-	const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\timesi.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\times.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\timesbi.ttf";
@@ -16,12 +17,12 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\corbel.ttf"; // THIS ONE HAS COMPLEX CONTOURS
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\comicbd.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\segoeuiz.ttf";
-	//const wchar_t* fontFilePath = L"Envy Code R.ttf";
+	const wchar_t* fontFilePath = L"Envy Code R.ttf";
 	//const wchar_t* fontFilePath = L"ShadeBlue-2OozX.ttf";
 
 	//> testing fonts
 	//wchar_t alphabetStr[] = L"АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя !\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
-	wchar_t alphabetStr[] = L"!\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
+	wchar_t alphabetStr[] = L" !\"#$%&'()*+,-./0123456789:;<=>?@[\\]^_`{|}~ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 	//wchar_t alphabetStr[] = L"ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprstuvwxyz";
 	//wchar_t alphabetStr[] = L"~";
 
@@ -44,10 +45,12 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 		fontGlyph.value.contours.freeMemory();
 	}
 	glyphs.freeMemory();*/
-	
-	int verticalSize = 100;
+
+	int verticalSize = 50;
 	double timeDelta2 = GetCurrentTimestamp(windowData);
-	HashTable<RasterizedGlyph> rasterizedGlyphs = RasterizeFontGlyphs(&font, verticalSize);
+	//windowData->fontData.maxBoundaries = verticalSize;
+
+	windowData->fontData = RasterizeFontGlyphs(&font, verticalSize);
 
 	timeDelta2 = GetCurrentTimestamp(windowData) - timeDelta2;
 	char buff[100];
@@ -56,31 +59,30 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 
 	//RasterizedGlyph glyph = rasterizedGlyphs.get(L'a');
 
-	int2 bottomLeft = { 0,30 };
-	for (int i = 0; i < alphabet.length; i++)
-	{
-		wchar_t code = alphabet.get(i);
+	//int2 bottomLeft = { 0,font.lineHeight };
+	//for (int i = 0; i < alphabet.length; i++)
+	//{
+	//	wchar_t code = alphabet.get(i);
 
-		RasterizedGlyph rasterizedGlyph = rasterizedGlyphs.get(code);
+	//	RasterizedGlyph rasterizedGlyph = rasterizedGlyphs.get(code);
 
-		int2 position = { bottomLeft.x + rasterizedGlyph.position.x, bottomLeft.y + rasterizedGlyph.position.y };
-		
-		CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize, windowData->drawingBitmap, position, windowData->drawingBitmapSize);
+	//	int2 position = { bottomLeft.x + rasterizedGlyph.leftSideBearings, bottomLeft.y + rasterizedGlyph.boundaries.y };
 
-		if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
+	//	CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize, windowData->drawingBitmap, position, windowData->drawingBitmapSize);
 
-		bottomLeft.x += rasterizedGlyph.bitmapSize.x;
-		bottomLeft.x += 10;
+	//	if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
 
-		if (bottomLeft.x + rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x)
-		{
-			bottomLeft.y += verticalSize;
-			bottomLeft.y += 10;
-			bottomLeft.x = 0;
-		}
+	//	bottomLeft.x += rasterizedGlyph.advanceWidth;
 
-		if (bottomLeft.y + verticalSize > windowData->drawingBitmapSize.y) break;
-	}
+	//	if (bottomLeft.x + rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x)
+	//	{
+	//		bottomLeft.y += font.lineHeight;
+	//		//bottomLeft.y += 10;
+	//		bottomLeft.x = 0;
+	//	}
+
+	//	if (bottomLeft.y + verticalSize > windowData->drawingBitmapSize.y) break;
+	//}
 }
 
 LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -112,6 +114,17 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->isRightButtonHold = true;
 		windowData->wasRightButtonPressed = true;
 
+		// exit text entering mode
+		if (windowData->textBuffer.length > 0)
+		{
+			CopyTextBufferToCanvas(windowData);
+		}
+
+		windowData->isTextEnteringMode = false;
+		windowData->textBlockOnClient = { -1,-1,-1,-1 };
+		windowData->cursorBufferPosition = -1;
+		windowData->textBuffer.clear();
+
 		SetCapture(hwnd);
 		break;
 	}
@@ -119,41 +132,144 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 	{
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
-		if (0x51 == wParam)
+		/*if (0x51 == wParam)
 		{
 			FillBitmapWithWhite(windowData->drawingBitmap, windowData->drawingBitmapSize);
 			RasterizeTestingFontAndPutOnCanvas(windowData);
-		}
+		}*/
 		break;
 	}
 	case WM_KEYDOWN:
 	{
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
-		int offsetPerMove = (int)(100.0f / (float)windowData->drawingZoomLevel);
-
-		if (VK_UP == wParam)
+		if (windowData->isTextEnteringMode)
 		{
-			windowData->drawingOffset.y += offsetPerMove;
-		}
+			if (wParam == 0x56) // v
+			{
+				if (GetKeyState(VK_CONTROL) & 0x8000) // is ctrl pressed
+				{
+					wchar_t* textFromClipboard = (wchar_t*)GetTextFromClipBoard(hwnd);
 
-		if (VK_DOWN == wParam)
+					if (textFromClipboard != 0)
+					{
+						windowData->textBuffer.append(textFromClipboard);
+						windowData->cursorBufferPosition += (int)wcslen(textFromClipboard);
+					}
+				}
+			}
+			else if (wParam == VK_BACK)
+			{
+				if (windowData->cursorBufferPosition > 0)
+				{
+					windowData->textBuffer.removeByIndex(windowData->cursorBufferPosition - 1);
+					windowData->cursorBufferPosition--;
+				}
+			}
+			else if (wParam == VK_DELETE)
+			{
+				//if (windowData->cursorBufferPosition <= windowData->textBuffer.length)
+				{
+					windowData->textBuffer.removeByIndex(windowData->cursorBufferPosition);
+				}
+			}
+			else if (wParam == VK_SPACE 
+				|| wParam == VK_OEM_PLUS
+				|| wParam == VK_OEM_COMMA
+				|| wParam == VK_OEM_MINUS
+				|| wParam == VK_OEM_PERIOD
+				|| wParam == VK_OEM_1 // ;:
+				|| wParam == VK_OEM_2 // /?
+				|| wParam == VK_OEM_3 // `~
+				|| wParam == VK_OEM_4 // [{
+				|| wParam == VK_OEM_5 // \|
+				|| wParam == VK_OEM_6 // ]}
+				|| wParam == VK_OEM_7 // '"
+				|| wParam == VK_ADD // +
+				|| wParam == VK_SUBTRACT // -
+				|| wParam == VK_MULTIPLY // *
+				|| wParam == VK_DIVIDE // /
+				|| wParam == VK_DECIMAL // .
+				|| wParam >= 0x60 && wParam <= 0x69 // numpad
+				|| wParam >= 0x41 && wParam <= 0x5A
+				|| wParam >= 0x30 && wParam <= 0x39)
+			{
+				windowData->isValidVirtualKeycodeForText = true;
+			}
+			/*
+			if (VK_UP == wParam)
+			{
+				windowData->drawingOffset.y += offsetPerMove;
+			}
+
+			if (VK_DOWN == wParam)
+			{
+				windowData->drawingOffset.y -= offsetPerMove;
+			}*/
+
+			else if (VK_RIGHT == wParam)
+			{
+				windowData->cursorBufferPosition++;
+
+				if (windowData->cursorBufferPosition > windowData->textBuffer.length)
+					windowData->cursorBufferPosition = windowData->textBuffer.length;
+			}
+			else if (VK_LEFT == wParam)
+			{
+				windowData->cursorBufferPosition--;
+
+				if (windowData->cursorBufferPosition < 0)
+					windowData->cursorBufferPosition = 0;
+			}
+		}
+		else
 		{
-			windowData->drawingOffset.y -= offsetPerMove;
-		}
+			int offsetPerMove = (int)(100.0f / (float)windowData->drawingZoomLevel);
 
-		if (VK_RIGHT == wParam)
+			if (VK_UP == wParam)
+			{
+				windowData->drawingOffset.y += offsetPerMove;
+			}
+
+			if (VK_DOWN == wParam)
+			{
+				windowData->drawingOffset.y -= offsetPerMove;
+			}
+
+			if (VK_RIGHT == wParam)
+			{
+				windowData->drawingOffset.x += offsetPerMove;
+			}
+
+			if (VK_LEFT == wParam)
+			{
+				windowData->drawingOffset.x -= offsetPerMove;
+			}
+
+			ValidateDrawingOffset(windowData);
+		}
+		break;
+	}
+	case WM_CHAR:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		if (windowData->isTextEnteringMode)
 		{
-			windowData->drawingOffset.x += offsetPerMove;
+			//int scanCode = (lParam >> 16) & 0xff;
+			
+			if (windowData->isValidVirtualKeycodeForText)
+			{
+				windowData->textBuffer.insert(windowData->cursorBufferPosition, wchar_t(wParam));
+				windowData->cursorBufferPosition++;
+				windowData->isValidVirtualKeycodeForText = false;
+			}
+
+			if (windowData->cursorBufferPosition > windowData->textBuffer.length)
+				windowData->cursorBufferPosition = windowData->textBuffer.length;
+			else if (windowData->cursorBufferPosition < 0)
+					windowData->cursorBufferPosition = 0;
 		}
-
-		if (VK_LEFT == wParam)
-		{
-			windowData->drawingOffset.x -= offsetPerMove;
-
-		}
-
-		ValidateDrawingOffset(windowData);
 		break;
 	}
 	case WM_MOUSELEAVE:
@@ -223,12 +339,13 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 	return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-//TODO
-// +Render bitmap into rect
-// +Load bmp
-// Store bmp
+// TODO:
+// 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, int windowMode)
 {
+	/*WideString test = WideString(L"YEAH");
+	test.insert(5,L'W');*/
+
 	WNDCLASS windowClass = {};
 	windowClass.hInstance = hInstance;
 	windowClass.lpszClassName = L"window class";
@@ -258,6 +375,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		return -1;
 	}
 
+	
 	//> Remove fade in animation when window is opened up
 	BOOL attrib = TRUE;
 	DwmSetWindowAttribute(hwnd, DWMWA_TRANSITIONS_FORCEDISABLED, &attrib, sizeof(attrib));
@@ -268,11 +386,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	InitRenderer(&windowData, hwnd);
 
 	RasterizeTestingFontAndPutOnCanvas(&windowData);
-	
+
 	windowData.toolTiles = SimpleDynamicArray<ToolTile>(10);
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::PENCIL_TOOL, DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp")));
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::FILL_TOOL, DRAW_TOOL::FILL, LoadBmpFile(L"./fill.bmp")));
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::ZOOM_TOOL, DRAW_TOOL::ZOOM, LoadBmpFile(L"./zoom.bmp")));
+	windowData.toolTiles.add(ToolTile(UI_ELEMENT::TEXT_TOOL, DRAW_TOOL::TEXT, LoadBmpFile(L"./text.bmp")));
 
 	windowData.brushColorTiles = SimpleDynamicArray<BrushColorTile>(10);
 	windowData.brushColorTiles.add(BrushColorTile({ 0, 0, 0 }, UI_ELEMENT::COLOR_BRUCH_1));
@@ -311,18 +430,18 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		double timeDelta = GetCurrentTimestamp(&windowData);
 
 		FillBitmapWithWhite(windowData.windowBitmap, windowData.windowClientSize);
-
 		// ui
 		DrawColorsBrush(&windowData, &windowData.brushColorTiles, { 5, 5 }, { 15, 15 }, 5);
 		DrawToolsPanel(&windowData, { 5, 30 }, { 15, 15 }, 5);
 
+		int2 drawingZoneSize = windowData.drawingZone.size();
 		StretchDIBits(
 			windowData.backgroundDC,
-			windowData.drawingZone.x, windowData.windowClientSize.y - windowData.drawingZone.y - windowData.drawingZone.size.y,
-			windowData.drawingZone.size.x, windowData.drawingZone.size.y,
+			windowData.drawingZone.x, windowData.windowClientSize.y - windowData.drawingZone.y - drawingZoneSize.y,
+			drawingZoneSize.x, drawingZoneSize.y,
 
 			(int)((float)windowData.drawingOffset.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingOffset.y / (float)windowData.drawingZoomLevel),
-			(int)((float)windowData.drawingZone.size.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingZone.size.y / (float)windowData.drawingZoomLevel),
+			(int)((float)drawingZoneSize.x / (float)windowData.drawingZoomLevel), (int)((float)drawingZoneSize.y / (float)windowData.drawingZoomLevel),
 
 			windowData.drawingBitmap,
 			&windowData.drawingBitmapInfo,
@@ -331,6 +450,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 		DrawDrawingCanvas(&windowData);
 		DrawDraggableCornerOfDrawingZone(&windowData);
+
+		DrawTextBufferToClient(&windowData);
 
 		// NOTE: when charger is not connected to the laptop, it has around 10x slower performance!
 		BitBlt(windowData.windowDC,

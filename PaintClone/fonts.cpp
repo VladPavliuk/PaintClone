@@ -1,10 +1,10 @@
 ﻿#include "fonts.h"
 
-void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
+void FillClosedPolygon(ubyte* bitmap, int2 bitmapSize,
 	SimpleDynamicArray<SimpleDynamicArray<float2>>* contours)
 {
-	int height = rasterizedGlyph.bitmapSize.y;
-	int width = rasterizedGlyph.bitmapSize.x;
+	int height = bitmapSize.y;
+	int width = bitmapSize.x;
 
 	int totalPointsCount = 0;
 
@@ -91,23 +91,23 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 			float xToPoint = xIntersections.get(i + 1);
 			int xToPixel = (int)xToPoint;
 
-			ubyte leftCornerColor = (ubyte)(pixelWeightPerIteration * (ubyte)((float)((float)(xFromPixel + 1) - xFromPoint)));
+			ubyte leftCornerColor = (ubyte)(pixelWeightPerIteration * ((float)(xFromPixel + 1) - xFromPoint));
 
 			if (xFromPixel == xToPixel)
 			{
-				rasterizedGlyph.bitmap[xFromPixel + (int)scanline * width] += leftCornerColor;
+				bitmap[xFromPixel + (int)scanline * width] += leftCornerColor;
 			}
 			else
 			{
-				rasterizedGlyph.bitmap[xFromPixel + (int)scanline * width] += leftCornerColor;
+				bitmap[xFromPixel + (int)scanline * width] += leftCornerColor;
 
 				for (int j = xFromPixel + 1; j < xToPixel; j++)
 				{
-					rasterizedGlyph.bitmap[j + (int)scanline * width] += (ubyte)pixelWeightPerIteration;
+					bitmap[j + (int)scanline * width] += (ubyte)pixelWeightPerIteration;
 				}
 
-				ubyte rightCornerColor = (ubyte)(pixelWeightPerIteration * (ubyte)((float)(xToPoint - (float)xToPixel)));
-				rasterizedGlyph.bitmap[xToPixel + (int)scanline * width] += rightCornerColor;
+				ubyte rightCornerColor = (ubyte)(pixelWeightPerIteration * ((float)(xToPoint - (float)xToPixel)));
+				bitmap[xToPixel + (int)scanline * width] += rightCornerColor;
 			}
 		}
 	}
@@ -117,12 +117,8 @@ void FillClosedPolygon(RasterizedGlyph rasterizedGlyph,
 	edges.freeMemory();
 }
 
-RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
+void RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight, ubyte** bitmap, int2* bitmapSize)
 {
-	//ubyte4 color = { 0, 0, 0, 0 };
-	RasterizedGlyph rasterizedGlyph;
-	rasterizedGlyph.code = fontGlyph.code;
-
 	int fontGlyphHeight = fontGlyph.coordsRect.w - fontGlyph.coordsRect.y;
 	int fontGlyphWidth = fontGlyph.coordsRect.z - fontGlyph.coordsRect.x;
 
@@ -131,7 +127,7 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 	fontGlyphWidth = (int)((float)fontGlyphWidth * scaleRatio);
 	fontGlyphHeight = glyphPixelsHeight;
 
-	rasterizedGlyph.bitmapSize = { fontGlyphWidth + 2, fontGlyphHeight + 1 };
+	*bitmapSize = { fontGlyphWidth + 2, fontGlyphHeight + 1 };
 
 	// Scale points to the desired rasterized size
 	// and remove duplicated points
@@ -180,12 +176,12 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 		contour->add(contour->get(0));
 	}
 
-	rasterizedGlyph.bitmap = (ubyte*)malloc(rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
+	*bitmap = (ubyte*)malloc((*bitmapSize).x * (*bitmapSize).y);
 
 	//FillBitmapWithWhite(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize);
 
 	// black background
-	ZeroMemory(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize.x * rasterizedGlyph.bitmapSize.y);
+	ZeroMemory(*bitmap, (*bitmapSize).x * (*bitmapSize).y);
 
 	//> create outlline of glyph
 	// Uncomment to create outline of points
@@ -209,44 +205,60 @@ RasterizedGlyph RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight)
 	//}
 	//<
 
-	FillClosedPolygon(rasterizedGlyph, &scaledContours);
+	FillClosedPolygon(*bitmap, *bitmapSize, &scaledContours);
 
 	for (int i = 0; i < scaledContours.length; i++)
 	{
 		scaledContours.get(i).freeMemory();
 	}
 	scaledContours.freeMemory();
-
-	return rasterizedGlyph;
 }
 
-HashTable<RasterizedGlyph> RasterizeFontGlyphs(FontData* font, int lineHeight)
+FontDataRasterized RasterizeFontGlyphs(FontData* font, int maxSymbolPixelsHeight)
 {
-	HashTable<RasterizedGlyph> rasterizedGlyphs = HashTable<RasterizedGlyph>(font->glyphs._capacity);
+	FontDataRasterized fontDataRasterized;
+	fontDataRasterized.glyphs = HashTable<RasterizedGlyph>(font->glyphs._capacity);
 
 	int maxWidth = font->maxBoundaries.z - font->maxBoundaries.x;
 	int maxHeight = font->maxBoundaries.w - font->maxBoundaries.y;
 
-	font->glyphs.resetIteration();
-	HashTableItem<int, FontGlyph> fontGlyph;
-	while (font->glyphs.getNext(&fontGlyph))
-	{
-		float scaleRatio = (float)lineHeight / (float)maxHeight;
+	float scaleRatio = (float)maxSymbolPixelsHeight / (float)maxHeight;
 
-		int glyphHeight = fontGlyph.value.coordsRect.w - fontGlyph.value.coordsRect.y;
+	fontDataRasterized.lineHeight = (int)((float)font->lineHeight * scaleRatio);
+	fontDataRasterized.ascent = (int)((float)font->ascent * scaleRatio);
+	fontDataRasterized.descent = (int)((float)font->descent * scaleRatio);
+	fontDataRasterized.lineGap = (int)((float)font->lineGap * scaleRatio);
+
+	font->glyphs.resetIteration();
+	HashTableItem<int, FontGlyph> fontGlyphItem;
+	while (font->glyphs.getNext(&fontGlyphItem))
+	{
+		FontGlyph fontGlyph = fontGlyphItem.value;
+		int glyphHeight = fontGlyph.coordsRect.w - fontGlyph.coordsRect.y;
 		int glyphScaledHeight = (int)((float)glyphHeight * scaleRatio);
 
-		RasterizedGlyph rasterizedGlyph = RasterizeFontGlyph(fontGlyph.value, glyphScaledHeight);
+		RasterizedGlyph rasterizedGlyph;
+		rasterizedGlyph.code = fontGlyph.code;
+		rasterizedGlyph.leftSideBearings = scaleRatio * fontGlyph.leftSideBearings;
+		rasterizedGlyph.advanceWidth = scaleRatio * fontGlyph.advanceWidth;
+		rasterizedGlyph.hasBitmap = fontGlyph.hasContours;
 
-		rasterizedGlyph.position = {
-			(int)(scaleRatio * fontGlyph.value.coordsRect.x),
-			(int)(scaleRatio * fontGlyph.value.coordsRect.y)
-		};
+		if (!rasterizedGlyph.hasBitmap)
+		{
+			rasterizedGlyph.boundaries = { 0, 0, 0, 0 };
+			rasterizedGlyph.bitmap = 0;
+			rasterizedGlyph.bitmapSize = { -1, -1 };
+		}
+		else
+		{
+			RasterizeFontGlyph(fontGlyph, glyphScaledHeight, &rasterizedGlyph.bitmap, &rasterizedGlyph.bitmapSize);
+			rasterizedGlyph.boundaries = fontGlyph.coordsRect * scaleRatio;
+		}
 
-		rasterizedGlyphs.set(fontGlyph.key, rasterizedGlyph);
+		fontDataRasterized.glyphs.set(rasterizedGlyph.code, rasterizedGlyph);
 	}
 
-	return rasterizedGlyphs;
+	return fontDataRasterized;
 }
 
 // PERFORMANCE +-3 ml sec
@@ -277,6 +289,8 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 	TTFTableRecord maxpTableRecord = {};
 	TTFTableRecord locaTableRecord = {};
 	TTFTableRecord headTableRecord = {};
+	TTFTableRecord hmtxTableRecord = {};
+	TTFTableRecord hheaTableRecord = {};
 
 	for (int i = 0; i < ttfFileHeader.numTables; i++)
 	{
@@ -304,6 +318,14 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 		else if (CompareStrings("loca", 4, (const char*)ttfTableRecord.tag, 4))
 		{
 			locaTableRecord = ttfTableRecord;
+		}
+		else if (CompareStrings("hmtx", 4, (const char*)ttfTableRecord.tag, 4))
+		{
+			hmtxTableRecord = ttfTableRecord;
+		}
+		else if (CompareStrings("hhea", 4, (const char*)ttfTableRecord.tag, 4))
+		{
+			hheaTableRecord = ttfTableRecord;
 		}
 
 		ttfFileBufferCursor += sizeof(TTFTableRecord);
@@ -347,6 +369,39 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 			numberOfGlyphs = ttfMaxpTableVersion2.numGlyphs;
 		}
 	}
+
+	//> hhea table
+	ttfFileBufferCursor = ttfFileBuffer + hheaTableRecord.offset;
+
+	TTFhheaTable hheaTable = *(TTFhheaTable*)ttfFileBufferCursor;
+	hheaTable.ascender = _byteswap_ushort(hheaTable.ascender);
+	hheaTable.descender = _byteswap_ushort(hheaTable.descender);
+	hheaTable.lineGap = _byteswap_ushort(hheaTable.lineGap);
+	hheaTable.numberOfHMetrics = _byteswap_ushort(hheaTable.numberOfHMetrics);
+
+	fontData.ascent = hheaTable.ascender;
+	fontData.descent = hheaTable.descender;
+	fontData.lineGap = hheaTable.lineGap;
+	fontData.lineHeight = hheaTable.ascender + -hheaTable.descender + hheaTable.lineGap;
+	//<
+
+	//> hmtx table
+	TTFhmtxTable ttfHmtxTable;
+	ttfFileBufferCursor = ttfFileBuffer + hmtxTableRecord.offset;
+
+	ttfHmtxTable.hMetrics = SimpleDynamicArray<TTFlongHorMetricRecord>(hheaTable.numberOfHMetrics);
+
+	for (int i = 0; i < hheaTable.numberOfHMetrics; i++)
+	{
+		TTFlongHorMetricRecord record = *(TTFlongHorMetricRecord*)ttfFileBufferCursor;
+
+		record.advanceWidth = _byteswap_ushort(record.advanceWidth);
+		record.lsb = _byteswap_ushort(record.lsb);
+		ttfHmtxTable.hMetrics.add(record);
+
+		ttfFileBufferCursor += sizeof(TTFlongHorMetricRecord);
+	}
+	//<
 
 	//> loca table
 	TTFlocaTableLong ttfLocaTableLong;
@@ -528,8 +583,6 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 
 		FontGlyph glyph;
 		glyph.code = code;
-		// NOTE: usually we will have 2 contours (one for inner outline, second for outer outline)
-		glyph.contours = SimpleDynamicArray<SimpleDynamicArray<int2>>(2);
 
 		int glyphId = charToGlyphIdMapping[code];
 
@@ -538,6 +591,24 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 		{
 			assert(false);
 		}
+
+		TTFlongHorMetricRecord longHorMetricRecord = ttfHmtxTable.hMetrics.get(glyphId);
+
+		glyph.leftSideBearings = longHorMetricRecord.lsb;
+		glyph.advanceWidth = longHorMetricRecord.advanceWidth;
+
+		if (code == L' ')
+		{
+			glyph.coordsRect = { 0, 0, 0, 0 };
+			glyph.hasContours = false;
+			fontData.glyphs.set(glyph.code, glyph);
+			continue;
+		}
+
+		glyph.hasContours = true;
+
+		// NOTE: usually we will have 2 contours (one for inner outline, second for outer outline)
+		glyph.contours = SimpleDynamicArray<SimpleDynamicArray<int2>>(2);
 
 		int offsetToGlyph = ttfLocaTableLong.offsets.get(glyphId);
 
@@ -763,6 +834,7 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 		fontData.glyphs.set(glyph.code, glyph);
 	}
 
+	ttfHmtxTable.hMetrics.freeMemory();
 	free(charToGlyphIdMapping);
 	ttfLocaTableLong.offsets.freeMemory();
 	ttfFileHeader.tableRecords.freeMemory();
