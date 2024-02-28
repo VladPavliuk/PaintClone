@@ -64,6 +64,13 @@ struct char3
 	char z;
 };
 
+struct int3
+{
+	int x;
+	int y;
+	int z;
+};
+
 typedef unsigned char ubyte;
 
 struct ubyte3

@@ -108,7 +108,9 @@ struct WindowData
 	bool isValidVirtualKeycodeForText;
 	int4 textBlockOnClient;
 	WideString textBuffer; // TODO: make it dyanmic
-	int cursorBufferPosition;
+	SimpleDynamicArray<SimpleDynamicArray<int2>>* glyphsLayout;
+	int cursorPosition;
+	int topLineIndexToShow;
 
 	DRAW_TOOL selectedTool;
 	//SimpleDynamicArray<BmpImage> toolsImages;

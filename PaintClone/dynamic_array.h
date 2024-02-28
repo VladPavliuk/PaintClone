@@ -30,6 +30,18 @@ struct SimpleDynamicArray
 		ZeroMemory(_elements, initCapacity * _singleElementSize);
 	}
 
+	static SimpleDynamicArray<T>* allocate(int initCapacity)
+	{
+		assert(initCapacity > 0);
+
+		SimpleDynamicArray<T>* dynamicArray = (SimpleDynamicArray<T>*)malloc(sizeof(SimpleDynamicArray<T>));
+		SimpleDynamicArray<T> localDynamicArray = SimpleDynamicArray<T>(initCapacity);
+
+		memcpy(dynamicArray, &localDynamicArray, sizeof(SimpleDynamicArray<T>));
+
+		return dynamicArray;
+	}
+
 	void add(T item)
 	{
 		if (length >= _capacity)

@@ -15,9 +15,9 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\calibri.ttf"; // THIS ONE HAS COMPLEX CONTOURS
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\Candarai.ttf"; // THIS ONE HAS COMPLEX CONTOURS
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\corbel.ttf"; // THIS ONE HAS COMPLEX CONTOURS
-	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\comicbd.ttf";
+	const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\comicbd.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\segoeuiz.ttf";
-	const wchar_t* fontFilePath = L"Envy Code R.ttf";
+	//const wchar_t* fontFilePath = L"Envy Code R.ttf";
 	//const wchar_t* fontFilePath = L"ShadeBlue-2OozX.ttf";
 
 	//> testing fonts
@@ -114,17 +114,68 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->isRightButtonHold = true;
 		windowData->wasRightButtonPressed = true;
 
-		// exit text entering mode
-		if (windowData->textBuffer.length > 0)
+		if (windowData->isTextEnteringMode)
 		{
-			CopyTextBufferToCanvas(windowData);
+			if (IsInRect(windowData->textBlockOnClient, windowData->mousePosition))
+			{
+				int textBlockHeight = windowData->textBlockOnClient.size().y;
+				int visibleLinesCount = textBlockHeight / windowData->fontData.lineHeight;
+				int lineIndex = (windowData->textBlockOnClient.w - windowData->mousePosition.y) / windowData->fontData.lineHeight;
+
+				int mouseLeftOffset = windowData->mousePosition.x - windowData->textBlockOnClient.x;
+
+				if (lineIndex >= windowData->glyphsLayout->length)
+				{
+					int lastLindeIndex = windowData->glyphsLayout->length - 1;
+					auto lastLine = windowData->glyphsLayout->get(lastLindeIndex);
+					int2 symbol = lastLine.get(lastLine.length - 1);
+					//windowData->cursorLayoutPosition = { lineIndex, symbol.x };
+					windowData->cursorPosition = symbol.y;
+				}
+				else
+				{
+					auto line = windowData->glyphsLayout->get(lineIndex);
+
+					for (int i = 0; i < line.length; i++)
+					{
+						int2 symbol = line.get(i);
+
+						if (mouseLeftOffset < symbol.x)
+						{
+							bool hasPrevSymbol = i > 0;
+							if (hasPrevSymbol)
+							{
+								int2 prevSymbol = line.get(i - 1);
+
+								if ((symbol.x - mouseLeftOffset) < (mouseLeftOffset - prevSymbol.x))
+								{
+									//windowData->cursorLayoutPosition.y = symbol.x;
+									windowData->cursorPosition = symbol.y;
+								}
+							}
+							break;
+						}
+
+						//windowData->cursorLayoutPosition.y = symbol.x;
+						windowData->cursorPosition = symbol.y;
+					}
+				}
+			}
+			else
+			{
+				// exit text entering mode
+				if (windowData->textBuffer.length > 0)
+				{
+					//CopyTextBufferToCanvas(windowData);
+				}
+
+				windowData->isTextEnteringMode = false;
+				windowData->textBlockOnClient = { -1,-1,-1,-1 };
+				windowData->cursorPosition = -1;
+				//windowData->cursorLayoutPosition = { -1, -1 };
+				windowData->textBuffer.clear();
+			}
 		}
-
-		windowData->isTextEnteringMode = false;
-		windowData->textBlockOnClient = { -1,-1,-1,-1 };
-		windowData->cursorBufferPosition = -1;
-		windowData->textBuffer.clear();
-
 		SetCapture(hwnd);
 		break;
 	}
@@ -154,26 +205,43 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					if (textFromClipboard != 0)
 					{
 						windowData->textBuffer.append(textFromClipboard);
-						windowData->cursorBufferPosition += (int)wcslen(textFromClipboard);
+						windowData->cursorPosition += (int)wcslen(textFromClipboard);
+
+						RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+						UpdateTextBlockTopLine(windowData);
 					}
 				}
 			}
+			else if (wParam == VK_RETURN)
+			{
+				windowData->textBuffer.insert(windowData->cursorPosition, L'\n');
+				windowData->cursorPosition++;
+
+				RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+				UpdateTextBlockTopLine(windowData);
+			}
 			else if (wParam == VK_BACK)
 			{
-				if (windowData->cursorBufferPosition > 0)
+				if (windowData->cursorPosition > 0)
 				{
-					windowData->textBuffer.removeByIndex(windowData->cursorBufferPosition - 1);
-					windowData->cursorBufferPosition--;
+					windowData->textBuffer.removeByIndex(windowData->cursorPosition - 1);
+					windowData->cursorPosition--;
+
+					RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+					UpdateTextBlockTopLine(windowData);
 				}
 			}
 			else if (wParam == VK_DELETE)
 			{
 				//if (windowData->cursorBufferPosition <= windowData->textBuffer.length)
 				{
-					windowData->textBuffer.removeByIndex(windowData->cursorBufferPosition);
+					windowData->textBuffer.removeByIndex(windowData->cursorPosition);
+					RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+					UpdateTextBlockTopLine(windowData);
 				}
 			}
-			else if (wParam == VK_SPACE 
+			else if (wParam == VK_SPACE
+				//|| wParam == VK_RETURN
 				|| wParam == VK_OEM_PLUS
 				|| wParam == VK_OEM_COMMA
 				|| wParam == VK_OEM_MINUS
@@ -196,30 +264,75 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			{
 				windowData->isValidVirtualKeycodeForText = true;
 			}
-			/*
-			if (VK_UP == wParam)
+			else if (VK_UP == wParam)
 			{
-				windowData->drawingOffset.y += offsetPerMove;
+				int2 cursorLayoutPosition = GetCursorLayoutPotision(windowData);
+
+				MoveCursorToNewLine(windowData, cursorLayoutPosition.x - 1, cursorLayoutPosition.y);
+				UpdateTextBlockTopLine(windowData);
 			}
-
-			if (VK_DOWN == wParam)
+			else if (VK_DOWN == wParam)
 			{
-				windowData->drawingOffset.y -= offsetPerMove;
-			}*/
+				int2 cursorLayoutPosition = GetCursorLayoutPotision(windowData);
 
+				MoveCursorToNewLine(windowData, cursorLayoutPosition.x + 1, cursorLayoutPosition.y);
+				UpdateTextBlockTopLine(windowData);
+			}
+			//else if (VK_UP == wParam || VK_DOWN == wParam)
+			//{
+			//	if (VK_UP == wParam && windowData->cursorLayoutPosition.x > 0)
+			//	{
+			//		windowData->cursorLayoutPosition.x--;
+			//	}
+			//	else if (VK_DOWN == wParam && windowData->cursorLayoutPosition.x < windowData->glyphsLayout->length - 1)
+			//	{
+			//		windowData->cursorLayoutPosition.x++;
+			//	}
+
+			//	auto line = windowData->glyphsLayout->get(windowData->cursorLayoutPosition.x);
+
+			//	int cursorLeftOffset = windowData->cursorLayoutPosition.y;
+			//	//TODO: copypasta from mouse click logic, move it a function
+			//	for (int i = 0; i < line.length; i++)
+			//	{
+			//		int2 symbol = line.get(i);
+
+			//		if (cursorLeftOffset < symbol.x)
+			//		{
+			//			bool hasPrevSymbol = i > 0;
+			//			if (hasPrevSymbol)
+			//			{
+			//				int2 prevSymbol = line.get(i - 1);
+
+			//				if ((symbol.x - cursorLeftOffset) < (cursorLeftOffset - prevSymbol.x))
+			//				{
+			//					//windowData->cursorLayoutPosition.y = symbol.x;
+			//					windowData->cursorPosition = symbol.y;
+			//				}
+			//			}
+			//			break;
+			//		}
+
+			//		//windowData->cursorLayoutPosition.y = symbol.x;
+			//		windowData->cursorPosition = symbol.y;
+
+			//	}
+			//}
 			else if (VK_RIGHT == wParam)
 			{
-				windowData->cursorBufferPosition++;
+				windowData->cursorPosition++;
 
-				if (windowData->cursorBufferPosition > windowData->textBuffer.length)
-					windowData->cursorBufferPosition = windowData->textBuffer.length;
+				if (windowData->cursorPosition > windowData->textBuffer.length)
+					windowData->cursorPosition = windowData->textBuffer.length;
+				UpdateTextBlockTopLine(windowData);
 			}
 			else if (VK_LEFT == wParam)
 			{
-				windowData->cursorBufferPosition--;
+				windowData->cursorPosition--;
 
-				if (windowData->cursorBufferPosition < 0)
-					windowData->cursorBufferPosition = 0;
+				if (windowData->cursorPosition < 0)
+					windowData->cursorPosition = 0;
+				UpdateTextBlockTopLine(windowData);
 			}
 		}
 		else
@@ -257,18 +370,21 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		if (windowData->isTextEnteringMode)
 		{
 			//int scanCode = (lParam >> 16) & 0xff;
-			
+
 			if (windowData->isValidVirtualKeycodeForText)
 			{
-				windowData->textBuffer.insert(windowData->cursorBufferPosition, wchar_t(wParam));
-				windowData->cursorBufferPosition++;
+				windowData->textBuffer.insert(windowData->cursorPosition, wchar_t(wParam));
+				windowData->cursorPosition++;
 				windowData->isValidVirtualKeycodeForText = false;
+
+				RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+				UpdateTextBlockTopLine(windowData);
 			}
 
-			if (windowData->cursorBufferPosition > windowData->textBuffer.length)
-				windowData->cursorBufferPosition = windowData->textBuffer.length;
-			else if (windowData->cursorBufferPosition < 0)
-					windowData->cursorBufferPosition = 0;
+			if (windowData->cursorPosition > windowData->textBuffer.length)
+				windowData->cursorPosition = windowData->textBuffer.length;
+			else if (windowData->cursorPosition < 0)
+				windowData->cursorPosition = 0;
 		}
 		break;
 	}
@@ -375,7 +491,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		return -1;
 	}
 
-	
+
 	//> Remove fade in animation when window is opened up
 	BOOL attrib = TRUE;
 	DwmSetWindowAttribute(hwnd, DWMWA_TRANSITIONS_FORCEDISABLED, &attrib, sizeof(attrib));
@@ -386,6 +502,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	InitRenderer(&windowData, hwnd);
 
 	RasterizeTestingFontAndPutOnCanvas(&windowData);
+	//CreateGlyphsLayout(&windowData, WideString(L"Y\r\na"));
 
 	windowData.toolTiles = SimpleDynamicArray<ToolTile>(10);
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::PENCIL_TOOL, DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp")));

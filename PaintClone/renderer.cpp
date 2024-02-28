@@ -181,13 +181,13 @@ void CopyTextBufferToCanvas(WindowData* windowData)
 
 	textBlockOnCanvas.xy(textBlockOnCanvas.xy() - windowData->drawingZone.xy());
 	textBlockOnCanvas.zw(textBlockOnCanvas.zw() - windowData->drawingZone.xy());
-	
+
 	textBlockOnCanvas.xy(textBlockOnCanvas.xy() + windowData->drawingOffset);
 	textBlockOnCanvas.zw(textBlockOnCanvas.zw() + windowData->drawingOffset);
 
 	textBlockOnCanvas /= windowData->drawingZoomLevel;
 
-	int2 bottomLeft = { windowData->textBlockOnClient.x, 
+	int2 bottomLeft = { windowData->textBlockOnClient.x,
 		windowData->textBlockOnClient.w - windowData->fontData.lineHeight * windowData->drawingZoomLevel };
 	bottomLeft -= { windowData->drawingZone.x, windowData->drawingZone.y };
 	bottomLeft += windowData->drawingOffset;
@@ -245,67 +245,145 @@ void DrawTextBufferToClient(WindowData* windowData)
 	//symbolsLocations.add(DynamicArray<int2>(10)); // create first line
 	//int currentLineIndex = 0;
 
-	int lineHeight = windowData->drawingZoomLevel * windowData->fontData.lineHeight;
-	int2 bottomLeft = { windowData->textBlockOnClient.x, windowData->textBlockOnClient.w - lineHeight };
-	for (int i = 0; i < windowData->textBuffer.length; i++)
-	{
-		if (i == windowData->cursorBufferPosition)
-		{
-			DrawRect(windowData, bottomLeft.x + 1, bottomLeft.y, 1, lineHeight, { 0,0,0 });
-		}
-
-		wchar_t code = windowData->textBuffer.chars[i];
-		RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
-
-		int2 position = {
-			bottomLeft.x + rasterizedGlyph.leftSideBearings * windowData->drawingZoomLevel,
-			bottomLeft.y + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * windowData->drawingZoomLevel };
-
-		if (rasterizedGlyph.hasBitmap)
-		{
-			CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
-				windowData->windowBitmap, position, windowData->windowClientSize, windowData->drawingZoomLevel);
-		}
-		//if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
-
-		//symbolsLocations.get(currentLineIndex);
-		bottomLeft.x += rasterizedGlyph.advanceWidth * windowData->drawingZoomLevel;
-
-		int nextSymbolWidth = 0;
-		if (i < windowData->textBuffer.length - 1)
-		{
-			wchar_t nextCode = windowData->textBuffer.chars[i + 1];
-			RasterizedGlyph nextRasterizedGlyph = windowData->fontData.glyphs.get(nextCode);
-			nextSymbolWidth = nextRasterizedGlyph.advanceWidth * windowData->drawingZoomLevel;
-		}
-
-		if (bottomLeft.x + nextSymbolWidth > windowData->textBlockOnClient.z)
-		{
-			bottomLeft.y -= lineHeight;
-
-			windowData->textBlockOnClient.y = bottomLeft.y;
-
-			if (windowData->textBlockOnClient.y < windowData->drawingZone.y)
-			{
-				windowData->textBlockOnClient.y = windowData->drawingZone.y;
-				break;
-			}
-			bottomLeft.x = windowData->textBlockOnClient.x;
-		}
-	}
-
 	DrawBorderRect(windowData,
 		windowData->textBlockOnClient.xy(),
 		windowData->textBlockOnClient.size(), 1, { 0,255,0 });
 
-	if (windowData->textBuffer.length == -1)
+	//if (windowData->textBuffer.length == 0) // no text typed
+	//{
+	//	DrawRect(windowData,
+	//		windowData->textBlockOnClient.x,
+	//		windowData->textBlockOnClient.w - windowData->fontData.lineHeight,
+	//		1, windowData->fontData.lineHeight, { 0,0,0 });
+	//	return;
+	//}
+
+	// render text
+	int maxLinesInTextBlock = windowData->textBlockOnClient.size().y / windowData->fontData.lineHeight;
+	int topLineIndex = windowData->topLineIndexToShow;
+	int charIndex;
+	int lineTopOffset;
+	int lineLeftOffset;
+	RasterizedGlyph rasterizedGlyph;
+	for (int layoutLineIndex = topLineIndex, lineIndex = 0; layoutLineIndex < windowData->glyphsLayout->length; layoutLineIndex++, lineIndex++)
 	{
-		DrawRect(windowData, bottomLeft.x, bottomLeft.y, 1, lineHeight, { 0,0,0 });
+		if (lineIndex >= maxLinesInTextBlock)
+		{
+			break;
+		}
+
+		auto line = windowData->glyphsLayout->get(layoutLineIndex);
+		lineTopOffset = windowData->textBlockOnClient.w - (lineIndex + 1) * windowData->fontData.lineHeight;
+		for (int j = 0; j < line.length; j++)
+		{
+			int2 glyphData = line.get(j);
+			charIndex = glyphData.y;
+
+			wchar_t code = windowData->textBuffer.chars[charIndex];
+			lineLeftOffset = windowData->textBlockOnClient.x + glyphData.x;
+
+			if (code != L'\n' && code != L'\0')
+			{
+				rasterizedGlyph = windowData->fontData.glyphs.get(code);
+				int2 position = {
+					lineLeftOffset + rasterizedGlyph.leftSideBearings * windowData->drawingZoomLevel,
+					lineTopOffset + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * windowData->drawingZoomLevel };
+
+				if (rasterizedGlyph.hasBitmap)
+				{
+					CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
+						windowData->windowBitmap, position, windowData->windowClientSize, windowData->drawingZoomLevel);
+				}
+			}
+
+			if (charIndex == windowData->cursorPosition)
+			{
+				//windowData->cursorLayoutPosition = { layoutLineIndex, lineLeftOffset - windowData->textBlockOnClient.x };
+
+				DrawRect(windowData, lineLeftOffset, lineTopOffset, 1, windowData->fontData.lineHeight, { 0,0,0 });
+			}
+		}
 	}
-	else if (windowData->textBuffer.length == windowData->cursorBufferPosition)
+
+	// if cursor at last char, render it explicitly
+	/*if (charIndex == windowData->textBuffer.length - 1
+		&& charIndex + 1 == windowData->cursorBufferPosition)
 	{
-		DrawRect(windowData, bottomLeft.x, bottomLeft.y, 1, lineHeight, { 0,0,0 });
-	}
+		wchar_t code = windowData->textBuffer.chars[charIndex];
+		if (code == L'\n')
+		{
+			DrawRect(windowData, windowData->textBlockOnClient.x, lineTopOffset, 1, windowData->fontData.lineHeight, { 0,0,0 });
+		}
+		else
+		{
+			DrawRect(windowData, lineLeftOffset + rasterizedGlyph.advanceWidth, lineTopOffset, 1, windowData->fontData.lineHeight, { 0,0,0 });
+		}
+	}*/
+
+	// render cursor
+
+
+	//int lineHeight = windowData->drawingZoomLevel * windowData->fontData.lineHeight;
+	//int2 bottomLeft = { windowData->textBlockOnClient.x, windowData->textBlockOnClient.w - lineHeight };
+	//for (int i = 0; i < windowData->textBuffer.length; i++)
+	//{
+	//	if (i == windowData->cursorBufferPosition)
+	//	{
+	//		DrawRect(windowData, bottomLeft.x + 1, bottomLeft.y, 1, lineHeight, { 0,0,0 });
+	//	}
+
+	//	wchar_t code = windowData->textBuffer.chars[i];
+	//	RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
+
+	//	int2 position = {
+	//		bottomLeft.x + rasterizedGlyph.leftSideBearings * windowData->drawingZoomLevel,
+	//		bottomLeft.y + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * windowData->drawingZoomLevel };
+
+	//	if (rasterizedGlyph.hasBitmap)
+	//	{
+	//		CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
+	//			windowData->windowBitmap, position, windowData->windowClientSize, windowData->drawingZoomLevel);
+	//	}
+	//	//if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
+
+	//	//symbolsLocations.get(currentLineIndex);
+	//	bottomLeft.x += rasterizedGlyph.advanceWidth * windowData->drawingZoomLevel;
+
+	//	int nextSymbolWidth = 0;
+	//	if (i < windowData->textBuffer.length - 1)
+	//	{
+	//		wchar_t nextCode = windowData->textBuffer.chars[i + 1];
+	//		RasterizedGlyph nextRasterizedGlyph = windowData->fontData.glyphs.get(nextCode);
+	//		nextSymbolWidth = nextRasterizedGlyph.advanceWidth * windowData->drawingZoomLevel;
+	//	}
+
+	//	if (bottomLeft.x + nextSymbolWidth > windowData->textBlockOnClient.z)
+	//	{
+	//		bottomLeft.y -= lineHeight;
+
+	//		windowData->textBlockOnClient.y = bottomLeft.y;
+
+	//		if (windowData->textBlockOnClient.y < windowData->drawingZone.y)
+	//		{
+	//			windowData->textBlockOnClient.y = windowData->drawingZone.y;
+	//			break;
+	//		}
+	//		bottomLeft.x = windowData->textBlockOnClient.x;
+	//	}
+	//}
+
+	//DrawBorderRect(windowData,
+	//	windowData->textBlockOnClient.xy(),
+	//	windowData->textBlockOnClient.size(), 1, { 0,255,0 });
+
+	//if (windowData->textBuffer.length == -1)
+	//{
+	//	DrawRect(windowData, bottomLeft.x, bottomLeft.y, 1, lineHeight, { 0,0,0 });
+	//}
+	//else if (windowData->textBuffer.length == windowData->cursorBufferPosition)
+	//{
+	//	DrawRect(windowData, bottomLeft.x, bottomLeft.y, 1, lineHeight, { 0,0,0 });
+	//}
 
 	//for (int i = 0; i < symbolsLocations.length; i++)
 	//{
@@ -492,4 +570,160 @@ void CopyBitmapToBitmap(ubyte4* sourceBitmap, int2 sourceBitmapSize,
 			destBitmap[xDest + yDest * destBitmapSize.x] = sourceColor;
 		}
 	}
+}
+
+//TODO: that's not the most quickest way to get cursor location at runtime
+// better approach would be to cache it after some actions
+int2 GetCursorLayoutPotision(WindowData* windowData)
+{
+	for (int layoutLineIndex = 0; layoutLineIndex < windowData->glyphsLayout->length; layoutLineIndex++)
+	{
+		auto layoutLine = windowData->glyphsLayout->get(layoutLineIndex);
+
+		for (int j = 0; j < layoutLine.length; j++)
+		{
+			int2 symbol = layoutLine.get(j);
+
+			if (symbol.y == windowData->cursorPosition)
+			{
+				return { layoutLineIndex, symbol.x };
+			}
+		}
+	}
+
+	int lastLineIndex = windowData->glyphsLayout->length - 1;
+	auto lastLine = windowData->glyphsLayout->get(lastLineIndex);
+
+	int2 lastSymbol = lastLine.get(lastLine.length - 1);
+	return { lastLineIndex, lastSymbol.x };
+}
+
+void _moveToNextLine(WindowData* windowData,
+	int lineHeight, int textBlockHeight,
+	int* currentLineWidth, int* lineIndex)
+{
+	*currentLineWidth = 0;
+	*lineIndex = *lineIndex + 1;
+	windowData->glyphsLayout->add(SimpleDynamicArray<int2>(1));
+
+	if (lineHeight * (*lineIndex + 1) > textBlockHeight)
+	{
+		windowData->textBlockOnClient.y -= lineHeight;
+
+		if (windowData->textBlockOnClient.y < windowData->drawingZone.y)
+			windowData->textBlockOnClient.y = windowData->drawingZone.y;
+	}
+}
+
+void UpdateTextBlockTopLine(WindowData* windowData)
+{
+	int2 cursorLayoutPosition = GetCursorLayoutPotision(windowData);
+	int cursorLineIndex = cursorLayoutPosition.x;
+	int maxLinesInTextBlock = windowData->textBlockOnClient.size().y / windowData->fontData.lineHeight;
+
+	if (cursorLineIndex < windowData->topLineIndexToShow)
+	{
+		windowData->topLineIndexToShow = cursorLineIndex;
+	}
+	else if (cursorLineIndex >= windowData->topLineIndexToShow + maxLinesInTextBlock)
+	{
+		windowData->topLineIndexToShow = cursorLineIndex - maxLinesInTextBlock + 1;
+	}
+	
+}
+
+void MoveCursorToNewLine(WindowData* windowData, int newLineIndex, int oldCursorLeftOffset)
+{
+	if (newLineIndex < 0 || newLineIndex >= windowData->glyphsLayout->length) return;
+
+	auto line = windowData->glyphsLayout->get(newLineIndex);
+
+	//TODO: copypasta from mouse click logic, move it a function
+	for (int i = 0; i < line.length; i++)
+	{
+		int2 symbol = line.get(i);
+
+		if (oldCursorLeftOffset < symbol.x)
+		{
+			bool hasPrevSymbol = i > 0;
+			if (hasPrevSymbol)
+			{
+				int2 prevSymbol = line.get(i - 1);
+
+				if ((symbol.x - oldCursorLeftOffset) < (oldCursorLeftOffset - prevSymbol.x))
+				{
+					windowData->cursorPosition = symbol.y;
+				}
+			}
+			break;
+		}
+
+		windowData->cursorPosition = symbol.y;
+	}
+}
+
+// NOTE: it is too slow in theory
+void RecreateGlyphsLayout(WindowData* windowData, WideString text, int lineMaxWidth)
+{
+	if (windowData->glyphsLayout != NULL)
+	{
+		for (int i = 0; i < windowData->glyphsLayout->length; i++)
+		{
+			windowData->glyphsLayout->get(i).freeMemory();
+		}
+		windowData->glyphsLayout->freeMemory();
+	}
+
+	windowData->glyphsLayout = SimpleDynamicArray<SimpleDynamicArray<int2>>::allocate(1);
+	windowData->glyphsLayout->add(SimpleDynamicArray<int2>(1));
+
+	int textBlockHeight = windowData->textBlockOnClient.size().y;
+	int lineHeight = windowData->fontData.lineHeight;
+
+	int currentLineWidth = 0; // in pixels
+	int lineIndex = 0;
+	int i = 0;
+	for (i = 0; i < text.length; i++)
+	{
+		/*if (i == windowData->cursorPosition)
+		{
+			windowData->cursorLayoutPosition = { lineIndex, currentLineWidth };
+		}*/
+
+		if (text.chars[i] == L'\n')
+		{
+			windowData->glyphsLayout->getPointer(lineIndex)->add({ currentLineWidth, i });
+
+			_moveToNextLine(windowData, lineHeight, textBlockHeight,
+				&currentLineWidth, &lineIndex);
+
+			continue;
+		}
+
+		RasterizedGlyph glyph = windowData->fontData.glyphs.get(text.chars[i]);
+
+		windowData->glyphsLayout->getPointer(lineIndex)->add({ currentLineWidth, i });
+
+		currentLineWidth += glyph.advanceWidth;
+
+		bool hasNextSymbol = i < text.length - 1;
+
+		if (hasNextSymbol && text.chars[i + 1] != L'\n')
+		{
+			RasterizedGlyph nextGlyph = windowData->fontData.glyphs.get(text.chars[i + 1]);
+
+			if (nextGlyph.advanceWidth + currentLineWidth > lineMaxWidth)
+			{
+				_moveToNextLine(windowData, lineHeight, textBlockHeight,
+					&currentLineWidth, &lineIndex);
+			}
+		}
+	}
+
+	// NOTE: We add the last char in the string (\0), for correct cursor work
+	windowData->glyphsLayout->getPointer(lineIndex)->add({ currentLineWidth, i });
+	/*if (i == windowData->cursorPosition)
+	{
+		windowData->cursorLayoutPosition = { lineIndex, currentLineWidth };
+	}*/
 }

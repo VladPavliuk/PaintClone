@@ -32,3 +32,8 @@ void CopyBitmapToBitmap(ubyte4* sourceBitmap, int2 sourceBitmapSize,
 
 void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
 	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int zoom = 1);
+
+void UpdateTextBlockTopLine(WindowData* windowData);
+void MoveCursorToNewLine(WindowData* windowData, int newLineIndex, int oldCursorLeftOffset);
+int2 GetCursorLayoutPotision(WindowData* windowData);
+void RecreateGlyphsLayout(WindowData* windowData, WideString text, int lineMaxWidth);

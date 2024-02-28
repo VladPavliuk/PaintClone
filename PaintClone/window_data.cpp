@@ -46,5 +46,7 @@ void InitWindowData(WindowData* windowData)
 	windowData->textBuffer = WideString(L"");
 	//ZeroMemory(windowData->textBuffer, 200);
 	windowData->textBlockOnClient = { -1,-1,-1,-1 };
-	windowData->cursorBufferPosition = -1;
+	windowData->cursorPosition = -1;
+	windowData->topLineIndexToShow = 0;
+	windowData->glyphsLayout = NULL;
 }

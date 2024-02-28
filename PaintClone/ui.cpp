@@ -32,8 +32,15 @@ void HandleUiElements(WindowData* windowData)
 				break;
 			}
 
+			if (windowData->isTextEnteringMode)
+			{
+				break;
+			}
+
+			int defaultLinesPerBlock = 3;
 			int defaultTextBlockWidth = 100 * windowData->drawingZoomLevel;
-			int defaultTextBlockHeight = windowData->fontData.lineHeight * windowData->drawingZoomLevel;
+			int defaultTextBlockHeight = defaultLinesPerBlock * windowData->fontData.lineHeight * windowData->drawingZoomLevel;
+
 			int4 textBlockRect;
 			textBlockRect.x = windowData->mousePosition.x;
 			textBlockRect.y = windowData->mousePosition.y;
@@ -51,7 +58,9 @@ void HandleUiElements(WindowData* windowData)
 			windowData->isTextEnteringMode = true;
 			windowData->textBlockOnClient = textBlockRect;
 
-			windowData->cursorBufferPosition = 0;
+			RecreateGlyphsLayout(windowData, windowData->textBuffer, textBlockRect.size().x);
+
+			windowData->cursorPosition = 0;
 			break;
 		}
 		}
