@@ -88,6 +88,7 @@ struct WindowData
 
 	int2 prevMousePosition;
 	int2 mousePosition;
+	bool mousePositionChanged;
 
 	bool isRightButtonHold;
 
@@ -111,6 +112,8 @@ struct WindowData
 	SimpleDynamicArray<SimpleDynamicArray<int2>>* glyphsLayout;
 	int cursorPosition;
 	int topLineIndexToShow;
+	//int2 selectedTextRange; // from index in text buffer, to index in text buffer
+	int selectedTextStartIndex; // from index in text buffer, to index in text buffer
 
 	DRAW_TOOL selectedTool;
 	//SimpleDynamicArray<BmpImage> toolsImages;

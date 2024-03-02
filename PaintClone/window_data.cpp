@@ -31,6 +31,7 @@ void InitWindowData(WindowData* windowData)
 	windowData->isRightButtonHold = false;
 	windowData->wasRightButtonPressed = false;
 	windowData->wasRightButtonPressed = false;
+	windowData->mousePositionChanged = false;
 
 	windowData->hotUi = UI_ELEMENT::NONE;
 	windowData->activeUiOffset = { -1, -1 };
@@ -48,5 +49,7 @@ void InitWindowData(WindowData* windowData)
 	windowData->textBlockOnClient = { -1,-1,-1,-1 };
 	windowData->cursorPosition = -1;
 	windowData->topLineIndexToShow = 0;
+	//windowData->selectedTextRange = { 2, 7 };
+	windowData->selectedTextStartIndex = -1;
 	windowData->glyphsLayout = NULL;
 }

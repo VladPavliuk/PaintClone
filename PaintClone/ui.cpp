@@ -209,8 +209,7 @@ void HandleUiElements(WindowData* windowData)
 			int2 fromPixel = windowData->prevMousePosition;
 			int2 toPixel = windowData->mousePosition;
 
-			if (!IsInRect({ windowData->drawingZone.x, windowData->drawingZone.y, windowData->drawingZone.z, windowData->drawingZone.w }, fromPixel)
-				&& !IsInRect({ windowData->drawingZone.x, windowData->drawingZone.y, windowData->drawingZone.z, windowData->drawingZone.w }, toPixel))
+			if (!IsInRect(windowData->drawingZone, fromPixel) && !IsInRect(windowData->drawingZone, toPixel))
 			{
 				break;
 			}
@@ -242,6 +241,17 @@ void HandleUiElements(WindowData* windowData)
 			else
 			{
 				DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize, drawingRect, fromPixel, toPixel, windowData->selectedColor);
+			}
+		}
+		else if (windowData->selectedTool == DRAW_TOOL::TEXT && windowData->isTextEnteringMode)
+		{
+			if (windowData->mousePositionChanged)
+			{
+				if (windowData->selectedTextStartIndex == -1)
+				{
+					windowData->selectedTextStartIndex = windowData->cursorPosition;
+				}
+				windowData->cursorPosition = GetCursorPositionByMousePosition(windowData);
 			}
 		}
 

@@ -31,9 +31,14 @@ void CopyBitmapToBitmap(ubyte4* sourceBitmap, int2 sourceBitmapSize,
 	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize);
 
 void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
-	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int zoom = 1);
+	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int zoom = 1, bool invertColor = false);
 
+void UpdateTextSelectionifShiftPressed(WindowData* windowData);
+int GetCursorPositionByMousePosition(WindowData* windowData);
 void UpdateTextBlockTopLine(WindowData* windowData);
 void MoveCursorToNewLine(WindowData* windowData, int newLineIndex, int oldCursorLeftOffset);
 int2 GetCursorLayoutPotision(WindowData* windowData);
+
+int2 GetSelectedTextRange(WindowData* windowData);
+
 void RecreateGlyphsLayout(WindowData* windowData, WideString text, int lineMaxWidth);

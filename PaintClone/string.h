@@ -15,6 +15,14 @@ struct WideString
 		length = -1;
 	}
 
+	WideString(int _length)
+	{
+		length = _length;
+
+		chars = (wchar_t*)malloc(sizeof(wchar_t) * (length + 1));
+		ZeroMemory(chars, sizeof(wchar_t) * (length + 1));
+	}
+
 	WideString(const wchar_t* initString)
 	{
 		_initStringValue(initString);
@@ -96,6 +104,17 @@ struct WideString
 		chars[length] = L'\0';
 	}
 
+	void removeChar(wchar_t charToRemove)
+	{
+		for (int i = length - 1; i >= 0; i--)
+		{
+			if (chars[i] == charToRemove)
+			{
+				removeByIndex(i);
+			}
+		}
+	}
+
 	void insert(int index, wchar_t charToInsert)
 	{
 		assert(index >= 0);
@@ -106,6 +125,56 @@ struct WideString
 
 		memcpy(chars + index + 1, chars + index, sizeof(wchar_t) * (length - index));
 		chars[index] = charToInsert;
+	}
+
+	void insert(int index, const wchar_t* stringToInsert)
+	{
+		assert(length >= index);
+		assert(stringToInsert != 0);
+
+		int stringToInsertLength = (int)wcslen(stringToInsert);
+		assert(stringToInsertLength > 0);
+
+		int newLength = length + stringToInsertLength;
+
+		wchar_t* newChars = (wchar_t*)malloc((newLength + 1) * sizeof(wchar_t));
+		
+		if (index > 0)
+		{
+			memcpy(newChars, chars, index * sizeof(wchar_t));
+		}
+
+		memcpy(newChars + index, stringToInsert, stringToInsertLength * sizeof(wchar_t));
+		
+		memcpy(newChars + index + stringToInsertLength, chars + index, (length - index) * sizeof(wchar_t));
+
+		length = newLength;
+		newChars[length] = L'\0';
+
+		free(chars);
+		chars = newChars;
+	}
+
+	void removeRange(int fromIndex, int count)
+	{
+		assert(fromIndex >= 0);
+		assert(length >= fromIndex + count);
+		memcpy(chars + fromIndex, chars + fromIndex + count, sizeof(wchar_t) * (length - (fromIndex + count)));
+		length -= count;
+		chars[length] = L'\0';
+	}
+
+	WideString substring(int fromIndex, int count)
+	{
+		assert(length >= fromIndex + count);
+		WideString substring = WideString(count);
+
+		for (int i = 0; i < count; i++)
+		{
+			substring.chars[i] = chars[fromIndex + i];
+		}
+
+		return substring;
 	}
 
 	void removeLast()

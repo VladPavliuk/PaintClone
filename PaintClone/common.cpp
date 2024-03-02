@@ -43,6 +43,34 @@ void BubbleSort(SimpleDynamicArray<float>* arr)
 	}
 }
 
+void PutTextIntoClipboard(HWND hwnd, WideString text)
+{
+	if (!IsClipboardFormatAvailable(CF_UNICODETEXT))
+	{
+		DWORD test = GetLastError();
+		return;
+	}
+
+	if (!OpenClipboard(hwnd))
+	{
+		DWORD test = GetLastError();
+		return;
+	}
+	EmptyClipboard();
+
+	int textLength = (text.length + 1) * sizeof(wchar_t);
+	HGLOBAL globalMemoryHandler = GlobalAlloc(GMEM_MOVEABLE, textLength);
+
+	wchar_t* globalMemory = (wchar_t*)GlobalLock(globalMemoryHandler);
+
+	memcpy(globalMemory, text.chars, textLength);
+	GlobalUnlock(globalMemoryHandler);
+
+	SetClipboardData(CF_UNICODETEXT, globalMemoryHandler);
+	CloseClipboard();
+	//GlobalFree(globalMemoryHandler);
+}
+
 wchar_t* GetTextFromClipBoard(HWND hwnd)
 {
 	if (!IsClipboardFormatAvailable(CF_UNICODETEXT) || !OpenClipboard(hwnd))

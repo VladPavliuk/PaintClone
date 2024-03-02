@@ -258,13 +258,16 @@ void DrawTextBufferToClient(WindowData* windowData)
 	//	return;
 	//}
 
+	int2 textSelectionRange = { -1, -1 };
+	if (windowData->selectedTextStartIndex != -1)
+	{
+		textSelectionRange = GetSelectedTextRange(windowData);
+	}
+
 	// render text
+	int textBlockleftSide = windowData->textBlockOnClient.z;
 	int maxLinesInTextBlock = windowData->textBlockOnClient.size().y / windowData->fontData.lineHeight;
 	int topLineIndex = windowData->topLineIndexToShow;
-	int charIndex;
-	int lineTopOffset;
-	int lineLeftOffset;
-	RasterizedGlyph rasterizedGlyph;
 	for (int layoutLineIndex = topLineIndex, lineIndex = 0; layoutLineIndex < windowData->glyphsLayout->length; layoutLineIndex++, lineIndex++)
 	{
 		if (lineIndex >= maxLinesInTextBlock)
@@ -273,33 +276,57 @@ void DrawTextBufferToClient(WindowData* windowData)
 		}
 
 		auto line = windowData->glyphsLayout->get(layoutLineIndex);
-		lineTopOffset = windowData->textBlockOnClient.w - (lineIndex + 1) * windowData->fontData.lineHeight;
+		int lineTopOffset = windowData->textBlockOnClient.w - (lineIndex + 1) * windowData->fontData.lineHeight;
 		for (int j = 0; j < line.length; j++)
 		{
 			int2 glyphData = line.get(j);
-			charIndex = glyphData.y;
+			int charIndex = glyphData.y;
+
+			// check if text in selection if any
+			bool isSymbolInSelection = (charIndex >= textSelectionRange.x && charIndex < textSelectionRange.y);
 
 			wchar_t code = windowData->textBuffer.chars[charIndex];
-			lineLeftOffset = windowData->textBlockOnClient.x + glyphData.x;
+			int lineLeftOffset = windowData->textBlockOnClient.x + glyphData.x;
 
-			if (code != L'\n' && code != L'\0')
+			if (code != L'\n' && code != L'\0') // glyphs layout includes \0 at the end of the last line
 			{
-				rasterizedGlyph = windowData->fontData.glyphs.get(code);
+				RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
 				int2 position = {
 					lineLeftOffset + rasterizedGlyph.leftSideBearings * windowData->drawingZoomLevel,
 					lineTopOffset + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * windowData->drawingZoomLevel };
 
+				if (isSymbolInSelection)
+				{
+					DrawRect(windowData, lineLeftOffset, lineTopOffset,
+						rasterizedGlyph.advanceWidth,
+						windowData->fontData.lineHeight, { 0,0,0 });
+				}
+
 				if (rasterizedGlyph.hasBitmap)
 				{
 					CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
-						windowData->windowBitmap, position, windowData->windowClientSize, windowData->drawingZoomLevel);
+						windowData->windowBitmap, position, windowData->windowClientSize,
+						windowData->drawingZoomLevel, isSymbolInSelection);
 				}
+			}
+
+			// NOTE: if new line symbol in the selection, we have to highlight it manually
+			if (code == L'\n' && isSymbolInSelection)
+			{
+				int newLineSymbolSelectionWidth = 20;
+
+				if (lineLeftOffset + newLineSymbolSelectionWidth > textBlockleftSide)
+				{
+					newLineSymbolSelectionWidth = textBlockleftSide - lineLeftOffset;
+				}
+
+				DrawRect(windowData, lineLeftOffset, lineTopOffset,
+					newLineSymbolSelectionWidth,
+					windowData->fontData.lineHeight, { 0, 0, 0 });
 			}
 
 			if (charIndex == windowData->cursorPosition)
 			{
-				//windowData->cursorLayoutPosition = { layoutLineIndex, lineLeftOffset - windowData->textBlockOnClient.x };
-
 				DrawRect(windowData, lineLeftOffset, lineTopOffset, 1, windowData->fontData.lineHeight, { 0,0,0 });
 			}
 		}
@@ -505,7 +532,7 @@ void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 bottomLeft, i
 }
 
 void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
-	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int zoom)
+	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int zoom, bool invertColor)
 {
 	int width = sourceBitmapSize.x;
 	int height = sourceBitmapSize.y;
@@ -520,14 +547,17 @@ void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
 		height = destBitmapSize.y - destXY.y;
 	}
 
+	int colorMask = invertColor ? 0 : 255;
 	for (int y = 0; y < height; y++)
 	{
 		int yDest = destXY.y + y * zoom;
 		for (int x = 0; x < width; x++)
 		{
-			ubyte sourceColor = 255 - sourceBitmap[x + y * sourceBitmapSize.x];
+			ubyte sourceColor = invertColor
+				? sourceBitmap[x + y * sourceBitmapSize.x]
+				: (colorMask - sourceBitmap[x + y * sourceBitmapSize.x]);
 
-			if (sourceColor == 255) continue;
+			if (sourceColor == colorMask) continue;
 
 			int xDest = destXY.x + x * zoom;
 
@@ -598,6 +628,84 @@ int2 GetCursorLayoutPotision(WindowData* windowData)
 	return { lastLineIndex, lastSymbol.x };
 }
 
+int GetCursorPositionByMousePosition(WindowData* windowData)
+{
+	int2 mousePosition = windowData->mousePosition;
+
+	// project mouse position on screen on text block where text is being rendered
+	int2 projectedMousePosition = { -1, -1 };
+
+	if (windowData->textBlockOnClient.x > mousePosition.x)
+	{
+		projectedMousePosition.x = windowData->textBlockOnClient.x;
+	}
+	else if (mousePosition.x > windowData->textBlockOnClient.z)
+	{
+		projectedMousePosition.x = windowData->textBlockOnClient.z;
+	}
+	else
+	{
+		projectedMousePosition.x = mousePosition.x;
+	}
+
+	if (windowData->textBlockOnClient.y > mousePosition.y)
+	{
+		projectedMousePosition.y = windowData->textBlockOnClient.y + 1;
+	}
+	else if (mousePosition.y > windowData->textBlockOnClient.w)
+	{
+		projectedMousePosition.y = windowData->textBlockOnClient.w - 1;
+	}
+	else
+	{
+		projectedMousePosition.y = mousePosition.y;
+	}
+
+	projectedMousePosition.x -= windowData->textBlockOnClient.x;
+	projectedMousePosition.y -= windowData->textBlockOnClient.y;
+
+	int textBlockHeight = windowData->textBlockOnClient.size().y;
+	int lineHeight = windowData->fontData.lineHeight;
+	int projectedLineIndex = ((textBlockHeight - projectedMousePosition.y) / lineHeight);
+
+	projectedLineIndex += windowData->topLineIndexToShow;
+
+	if (projectedLineIndex >= windowData->glyphsLayout->length)
+	{
+		int lastLindeIndex = windowData->glyphsLayout->length - 1;
+		auto lastLine = windowData->glyphsLayout->get(lastLindeIndex);
+		int2 symbol = lastLine.get(lastLine.length - 1);
+		return symbol.y;
+	}
+
+	auto line = windowData->glyphsLayout->get(projectedLineIndex);
+
+	int textIndex = -1;
+	for (int i = 0; i < line.length; i++)
+	{
+		int2 symbol = line.get(i);
+
+		if (projectedMousePosition.x < symbol.x)
+		{
+			bool hasPrevSymbol = i > 0;
+			if (hasPrevSymbol)
+			{
+				int2 prevSymbol = line.get(i - 1);
+
+				if ((symbol.x - projectedMousePosition.x) < (projectedMousePosition.x - prevSymbol.x))
+				{
+					textIndex = symbol.y;
+				}
+			}
+			break;
+		}
+
+		textIndex = symbol.y;
+	}
+
+	return textIndex;
+}
+
 void _moveToNextLine(WindowData* windowData,
 	int lineHeight, int textBlockHeight,
 	int* currentLineWidth, int* lineIndex)
@@ -629,7 +737,23 @@ void UpdateTextBlockTopLine(WindowData* windowData)
 	{
 		windowData->topLineIndexToShow = cursorLineIndex - maxLinesInTextBlock + 1;
 	}
-	
+}
+
+void UpdateTextSelectionifShiftPressed(WindowData* windowData)
+{
+	//TODO: it's better no to work with keystate directly, create some middle staff
+	if (GetKeyState(VK_SHIFT) & 0x8000)
+	{
+		if (windowData->selectedTextStartIndex != -1)
+		{
+			return;
+		}
+
+		windowData->selectedTextStartIndex = windowData->cursorPosition;
+		return;
+	}
+
+	windowData->selectedTextStartIndex = -1;
 }
 
 void MoveCursorToNewLine(WindowData* windowData, int newLineIndex, int oldCursorLeftOffset)
@@ -660,6 +784,14 @@ void MoveCursorToNewLine(WindowData* windowData, int newLineIndex, int oldCursor
 
 		windowData->cursorPosition = symbol.y;
 	}
+}
+
+int2 GetSelectedTextRange(WindowData* windowData)
+{
+	int fromIndex = minInt(windowData->cursorPosition, windowData->selectedTextStartIndex);
+	int toIndex = maxInt(windowData->cursorPosition, windowData->selectedTextStartIndex);
+
+	return { fromIndex, toIndex };
 }
 
 // NOTE: it is too slow in theory
