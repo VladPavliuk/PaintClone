@@ -29,6 +29,16 @@ enum class UI_ELEMENT
 	CANVAS_HORIZONTAL_SCROLL,
 	CANVAS_CORNER_RESIZE,
 
+	TEXT_BLOCK,
+	TEXT_BLOCK_TOP_LEFT_CORNER_RESIZE,
+	TEXT_BLOCK_TOP_RIGHT_CORNER_RESIZE,
+	TEXT_BLOCK_BOTTOM_RIGHT_CORNER_RESIZE,
+	TEXT_BLOCK_BOTTOM_LEFT_CORNER_RESIZE,
+	TEXT_BLOCK_TOP_RESIZE,
+	TEXT_BLOCK_RIGHT_RESIZE,
+	TEXT_BLOCK_BOTTOM_RESIZE,
+	TEXT_BLOCK_LEFT_RESIZE,
+
 	PENCIL_TOOL,
 	FILL_TOOL,
 	ZOOM_TOOL,
@@ -79,6 +89,8 @@ struct WindowData
 	int2 drawingBitmapSize;
 
 	int4 drawingZone; // relative to client rect
+
+	//TODO: probably there's no need to store dimensions of this button, sine we can get it from canavs dimensions
 	int4 drawingZoneCornerResize; // relative to client rect
 
 	int drawingZoomLevel;
@@ -108,6 +120,7 @@ struct WindowData
 	bool isTextEnteringMode;
 	bool isValidVirtualKeycodeForText;
 	int4 textBlockOnClient;
+	int2 textBlockButtonsSize;
 	WideString textBuffer; // TODO: make it dyanmic
 	SimpleDynamicArray<SimpleDynamicArray<int2>>* glyphsLayout;
 	int cursorPosition;

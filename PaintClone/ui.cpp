@@ -8,6 +8,10 @@ void HandleUiElements(WindowData* windowData)
 	{
 		break;
 	}
+	/*case UI_ELEMENT::TEXT_BLOCK:
+	{
+		break;
+	}*/
 	case UI_ELEMENT::DRAWING_CANVAS:
 	{
 		switch (windowData->selectedTool)
@@ -23,20 +27,24 @@ void HandleUiElements(WindowData* windowData)
 		}
 		case DRAW_TOOL::TEXT:
 		{
-			//int2 locationOnCanvas = windowData->mousePosition;
-
-			//locationOnCanvas = ConvertFromScreenToDrawingCoords(windowData, locationOnCanvas);
-
-			if (!IsInRect(windowData->drawingZone, windowData->mousePosition))
+			// if mode off, create text block
+			//		if mode on and click in box ...
+			// if mode on and click outside box, create empty box
+			
+			//> clear previuos state of text block
+			if (windowData->textBuffer.length > 0)
 			{
-				break;
+				CopyTextBufferToCanvas(windowData);
 			}
 
-			if (windowData->isTextEnteringMode)
-			{
-				break;
-			}
+			windowData->textBlockOnClient = { -1,-1,-1,-1 };
+			windowData->cursorPosition = -1;
+			windowData->topLineIndexToShow = 0;
+			windowData->selectedTextStartIndex = -1;
+			windowData->textBuffer.clear();
+			//<
 
+			// create text block state
 			int defaultLinesPerBlock = 3;
 			int defaultTextBlockWidth = 100 * windowData->drawingZoomLevel;
 			int defaultTextBlockHeight = defaultLinesPerBlock * windowData->fontData.lineHeight * windowData->drawingZoomLevel;
@@ -49,18 +57,19 @@ void HandleUiElements(WindowData* windowData)
 
 			int test = (textBlockRect.x - windowData->drawingZone.x) % windowData->drawingZoomLevel;
 			int test2 = (textBlockRect.y - windowData->drawingZone.y) % windowData->drawingZoomLevel;
-			
+
 			textBlockRect.x -= test;
 			textBlockRect.y -= test2;
 			textBlockRect.z -= test;
 			textBlockRect.w -= test2;
 
-			windowData->isTextEnteringMode = true;
 			windowData->textBlockOnClient = textBlockRect;
 
 			RecreateGlyphsLayout(windowData, windowData->textBuffer, textBlockRect.size().x);
 
 			windowData->cursorPosition = 0;
+
+			windowData->isTextEnteringMode = true;
 			break;
 		}
 		}
@@ -113,9 +122,13 @@ void HandleUiElements(WindowData* windowData)
 		}
 		break;
 	}
+	default:
+	{
+		//OutputDebugString(L"YEAH\n");
+		break;
 	}
-	windowData->sumbitedUi = UI_ELEMENT::NONE;
-
+	}
+	
 	switch (windowData->sumbitedOnAnyHotUi)
 	{
 	case UI_ELEMENT::NONE:
@@ -149,7 +162,6 @@ void HandleUiElements(WindowData* windowData)
 		break;
 	}
 	}
-	windowData->sumbitedOnAnyHotUi = UI_ELEMENT::NONE;
 
 	switch (windowData->activeUi)
 	{
@@ -160,9 +172,9 @@ void HandleUiElements(WindowData* windowData)
 	case UI_ELEMENT::CANVAS_CORNER_RESIZE:
 	{
 		int2 drawingZoneCornerResizeSize = windowData->drawingZoneCornerResize.size();
-		
+
 		windowData->drawingZoneCornerResize.xy(windowData->mousePosition - windowData->activeUiOffset);
-		
+
 		windowData->drawingZoneCornerResize.zw(windowData->drawingZoneCornerResize.xy() + drawingZoneCornerResizeSize);
 
 		if (windowData->drawingZoneCornerResize.z > windowData->windowClientSize.x)
@@ -243,18 +255,213 @@ void HandleUiElements(WindowData* windowData)
 				DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize, drawingRect, fromPixel, toPixel, windowData->selectedColor);
 			}
 		}
-		else if (windowData->selectedTool == DRAW_TOOL::TEXT && windowData->isTextEnteringMode)
+
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK:
+	{
+		int oldCursorPosition = windowData->cursorPosition;
+		windowData->cursorPosition = GetCursorPositionByMousePosition(windowData);
+		
+		if (windowData->wasRightButtonPressed)
 		{
-			if (windowData->mousePositionChanged)
+			if (GetKeyState(VK_SHIFT) & 0x8000)
 			{
-				if (windowData->selectedTextStartIndex == -1)
-				{
-					windowData->selectedTextStartIndex = windowData->cursorPosition;
-				}
-				windowData->cursorPosition = GetCursorPositionByMousePosition(windowData);
+				windowData->selectedTextStartIndex = oldCursorPosition;
+			}
+			else
+			{
+				windowData->selectedTextStartIndex = windowData->cursorPosition;
 			}
 		}
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK_TOP_LEFT_CORNER_RESIZE:
+	{
+		if (!windowData->mousePositionChanged) break;
 
+		windowData->textBlockOnClient.x = windowData->mousePosition.x + windowData->activeUiOffset.x;
+
+		if (windowData->textBlockOnClient.x > windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.x = windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x;
+		}
+		else if (windowData->textBlockOnClient.x < windowData->drawingZone.x + windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.x = windowData->drawingZone.x + windowData->textBlockButtonsSize.x;
+		}
+
+		windowData->textBlockOnClient.w = windowData->mousePosition.y - windowData->activeUiOffset.y;
+
+		if (windowData->textBlockOnClient.w < windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.w = windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y;
+		}
+		else if (windowData->textBlockOnClient.w > windowData->drawingZone.w - windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.w = windowData->drawingZone.w - windowData->textBlockButtonsSize.y;
+		}
+
+		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK_TOP_RIGHT_CORNER_RESIZE:
+	{
+		if (!windowData->mousePositionChanged) break;
+
+		windowData->textBlockOnClient.z = windowData->mousePosition.x - windowData->activeUiOffset.x;
+
+		if (windowData->textBlockOnClient.z > windowData->drawingZone.z - windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.z = windowData->drawingZone.z - windowData->textBlockButtonsSize.x;
+		}
+		else if (windowData->textBlockOnClient.z < windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.z = windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x;
+		}
+
+		windowData->textBlockOnClient.w = windowData->mousePosition.y - windowData->activeUiOffset.y;
+
+		if (windowData->textBlockOnClient.w < windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.w = windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y;
+		}
+		else if (windowData->textBlockOnClient.w > windowData->drawingZone.w - windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.w = windowData->drawingZone.w - windowData->textBlockButtonsSize.y;
+		}
+
+		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK_BOTTOM_RIGHT_CORNER_RESIZE:
+	{
+		if (!windowData->mousePositionChanged) break;
+
+		windowData->textBlockOnClient.z = windowData->mousePosition.x - windowData->activeUiOffset.x;
+
+		if (windowData->textBlockOnClient.z > windowData->drawingZone.z - windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.z = windowData->drawingZone.z - windowData->textBlockButtonsSize.x;
+		}
+		else if (windowData->textBlockOnClient.z < windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.z = windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x;
+		}
+
+		windowData->textBlockOnClient.y = windowData->mousePosition.y + windowData->activeUiOffset.y;
+
+		if (windowData->textBlockOnClient.y < windowData->drawingZone.y + windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.y = windowData->drawingZone.y + windowData->textBlockButtonsSize.y;
+		}
+		else if (windowData->textBlockOnClient.y > windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.y = windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y;
+		}
+
+		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK_BOTTOM_LEFT_CORNER_RESIZE:
+	{
+		if (!windowData->mousePositionChanged) break;
+
+		windowData->textBlockOnClient.x = windowData->mousePosition.x + windowData->activeUiOffset.x;
+
+		if (windowData->textBlockOnClient.x > windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.x = windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x;
+		}
+		else if (windowData->textBlockOnClient.x < windowData->drawingZone.x + windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.x = windowData->drawingZone.x + windowData->textBlockButtonsSize.x;
+		}
+
+		windowData->textBlockOnClient.y = windowData->mousePosition.y + windowData->activeUiOffset.y;
+
+		if (windowData->textBlockOnClient.y < windowData->drawingZone.y + windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.y = windowData->drawingZone.y + windowData->textBlockButtonsSize.y;
+		}
+		else if (windowData->textBlockOnClient.y > windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.y = windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y;
+		}
+
+		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK_TOP_RESIZE:
+	{
+		if (!windowData->mousePositionChanged) break;
+
+		windowData->textBlockOnClient.w = windowData->mousePosition.y - windowData->activeUiOffset.y;
+
+		if (windowData->textBlockOnClient.w < windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.w = windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y;
+		}
+		else if (windowData->textBlockOnClient.w > windowData->drawingZone.w - windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.w = windowData->drawingZone.w - windowData->textBlockButtonsSize.y;
+		}
+
+		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK_RIGHT_RESIZE:
+	{
+		if (!windowData->mousePositionChanged) break;
+
+		windowData->textBlockOnClient.z = windowData->mousePosition.x - windowData->activeUiOffset.x;
+
+		if (windowData->textBlockOnClient.z > windowData->drawingZone.z - windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.z = windowData->drawingZone.z - windowData->textBlockButtonsSize.x;
+		}
+		else if (windowData->textBlockOnClient.z < windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.z = windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x;
+		}
+
+		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK_BOTTOM_RESIZE:
+	{
+		if (!windowData->mousePositionChanged) break;
+
+		windowData->textBlockOnClient.y = windowData->mousePosition.y + windowData->activeUiOffset.y;
+
+		if (windowData->textBlockOnClient.y < windowData->drawingZone.y + windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.y = windowData->drawingZone.y + windowData->textBlockButtonsSize.y;
+		}
+		else if (windowData->textBlockOnClient.y > windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y)
+		{
+			windowData->textBlockOnClient.y = windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y;
+		}
+
+		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+		break;
+	}
+	case UI_ELEMENT::TEXT_BLOCK_LEFT_RESIZE:
+	{
+		if (!windowData->mousePositionChanged) break;
+
+		windowData->textBlockOnClient.x = windowData->mousePosition.x + windowData->activeUiOffset.x;
+
+		if (windowData->textBlockOnClient.x > windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.x = windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x;
+		}
+		else if (windowData->textBlockOnClient.x < windowData->drawingZone.x + windowData->textBlockButtonsSize.x)
+		{
+			windowData->textBlockOnClient.x = windowData->drawingZone.x + windowData->textBlockButtonsSize.x;
+		}
+
+		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
 		break;
 	}
 	}
@@ -263,7 +470,7 @@ void HandleUiElements(WindowData* windowData)
 void DrawDrawingCanvas(WindowData* windowData)
 {
 	DrawBorderRect(windowData, { windowData->drawingZone.x, windowData->drawingZone.y },
-		windowData->drawingZone.size(), 2, {255, 0, 0});
+		windowData->drawingZone.size(), 2, { 255, 0, 0 });
 	DrawScrollsForDrawingZone(windowData);
 
 	CheckHotActiveForUiElement(windowData, {
@@ -289,7 +496,7 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 				windowData->drawingZone.x - scrollWidth,
 				(int)(drawingZoneToImageHeightRatio * windowData->drawingOffset.y) + windowData->drawingZone.y
 			},
-			{ scrollWidth, (int)(drawingZoneToImageHeightRatio * windowData->drawingZone.size().y)},
+			{ scrollWidth, (int)(drawingZoneToImageHeightRatio * windowData->drawingZone.size().y) },
 			scrollBgColor, scrollHoveredBgColor, UI_ELEMENT::CANVAS_VERTICAL_SCROLL);
 	}
 
@@ -303,7 +510,7 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 				(int)(drawingZoneToImageWidthRatio * windowData->drawingOffset.x) + windowData->drawingZone.x,
 				windowData->drawingZone.y - scrollWidth,
 			},
-			{ (int)(drawingZoneToImageWidthRatio * windowData->drawingZone.size().x), scrollWidth},
+			{ (int)(drawingZoneToImageWidthRatio * windowData->drawingZone.size().x), scrollWidth },
 			scrollBgColor, scrollHoveredBgColor, UI_ELEMENT::CANVAS_HORIZONTAL_SCROLL);
 	}
 }
@@ -399,8 +606,149 @@ void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
 void DrawDraggableCornerOfDrawingZone(WindowData* windowData)
 {
 	DrawButton(windowData,
-		{ windowData->drawingZoneCornerResize.x, windowData->drawingZoneCornerResize.y },
-		windowData->drawingZoneCornerResize.size(), {100, 100, 100}, {150, 150, 150}, UI_ELEMENT::CANVAS_CORNER_RESIZE);
+		windowData->drawingZoneCornerResize.xy(),
+		windowData->drawingZoneCornerResize.size(), { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::CANVAS_CORNER_RESIZE);
+}
+
+void DrawTextBlock(WindowData* windowData)
+{
+	if (!windowData->isTextEnteringMode)
+	{
+		return;
+	}
+
+	CheckHotActiveForUiElement(windowData, windowData->textBlockOnClient, UI_ELEMENT::TEXT_BLOCK);
+	
+	DrawBorderRect(windowData,
+		windowData->textBlockOnClient.xy(),
+		windowData->textBlockOnClient.size(), 1, { 0,255,0 });
+
+	int2 textSelectionRange = { -1, -1 };
+	if (windowData->selectedTextStartIndex != -1)
+	{
+		textSelectionRange = GetSelectedTextRange(windowData);
+	}
+
+	// render text
+	int textBlockleftSide = windowData->textBlockOnClient.z;
+	int maxLinesInTextBlock = windowData->textBlockOnClient.size().y / windowData->fontData.lineHeight;
+	int topLineIndex = windowData->topLineIndexToShow;
+	for (int layoutLineIndex = topLineIndex, lineIndex = 0; layoutLineIndex < windowData->glyphsLayout->length; layoutLineIndex++, lineIndex++)
+	{
+		if (lineIndex >= maxLinesInTextBlock)
+		{
+			break;
+		}
+
+		auto line = windowData->glyphsLayout->get(layoutLineIndex);
+		int lineTopOffset = windowData->textBlockOnClient.w - (lineIndex + 1) * windowData->fontData.lineHeight;
+		for (int j = 0; j < line.length; j++)
+		{
+			int2 glyphData = line.get(j);
+			int charIndex = glyphData.y;
+
+			// check if text in selection if any
+			bool isSymbolInSelection = (charIndex >= textSelectionRange.x && charIndex < textSelectionRange.y);
+
+			wchar_t code = windowData->textBuffer.chars[charIndex];
+			int lineLeftOffset = windowData->textBlockOnClient.x + glyphData.x;
+
+			if (code != L'\n' && code != L'\0') // glyphs layout includes \0 at the end of the last line
+			{
+				RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
+				int2 position = {
+					lineLeftOffset + rasterizedGlyph.leftSideBearings * windowData->drawingZoomLevel,
+					lineTopOffset + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * windowData->drawingZoomLevel };
+
+				if (isSymbolInSelection)
+				{
+					DrawRect(windowData, lineLeftOffset, lineTopOffset,
+						rasterizedGlyph.advanceWidth,
+						windowData->fontData.lineHeight, { 0,0,0 });
+				}
+
+				if (rasterizedGlyph.hasBitmap)
+				{
+					CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
+						windowData->windowBitmap, position, windowData->windowClientSize,
+						windowData->drawingZoomLevel, isSymbolInSelection);
+				}
+			}
+
+			// NOTE: if new line symbol in the selection, we have to highlight it manually
+			if (code == L'\n' && isSymbolInSelection)
+			{
+				int newLineSymbolSelectionWidth = 20;
+
+				if (lineLeftOffset + newLineSymbolSelectionWidth > textBlockleftSide)
+				{
+					newLineSymbolSelectionWidth = textBlockleftSide - lineLeftOffset;
+				}
+
+				DrawRect(windowData, lineLeftOffset, lineTopOffset,
+					newLineSymbolSelectionWidth,
+					windowData->fontData.lineHeight, { 0, 0, 0 });
+			}
+
+			if (charIndex == windowData->cursorPosition)
+			{
+				DrawRect(windowData, lineLeftOffset, lineTopOffset, 1, windowData->fontData.lineHeight, { 0,0,0 });
+			}
+		}
+	}
+}
+
+void DrawTextBlockResizeButtons(WindowData* windowData)
+{
+	if (!windowData->isTextEnteringMode) return;
+
+	//> corner resize buttons
+	DrawButton(windowData,
+		{ windowData->textBlockOnClient.x - windowData->textBlockButtonsSize.x, windowData->textBlockOnClient.w },
+		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_TOP_LEFT_CORNER_RESIZE);
+
+	DrawButton(windowData,
+		{ windowData->textBlockOnClient.z, windowData->textBlockOnClient.w },
+		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_TOP_RIGHT_CORNER_RESIZE);
+
+	DrawButton(windowData,
+		{ windowData->textBlockOnClient.z, windowData->textBlockOnClient.y - windowData->textBlockButtonsSize.y },
+		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_BOTTOM_RIGHT_CORNER_RESIZE);
+
+	DrawButton(windowData,
+		{ windowData->textBlockOnClient.x - windowData->textBlockButtonsSize.x, windowData->textBlockOnClient.y - windowData->textBlockButtonsSize.y },
+		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_BOTTOM_LEFT_CORNER_RESIZE);
+	//<
+
+	//> edges resize buttons
+	DrawButton(windowData,
+		{ 
+			windowData->textBlockOnClient.x + (windowData->textBlockOnClient.size().x - windowData->textBlockButtonsSize.x) / 2,
+			windowData->textBlockOnClient.w
+		},
+		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_TOP_RESIZE);
+
+	DrawButton(windowData,
+		{
+			windowData->textBlockOnClient.z,
+			windowData->textBlockOnClient.y + (windowData->textBlockOnClient.size().y - windowData->textBlockButtonsSize.y) / 2
+		},
+		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_RIGHT_RESIZE);
+
+	DrawButton(windowData,
+		{ 
+			windowData->textBlockOnClient.x - windowData->textBlockButtonsSize.x, 
+			windowData->textBlockOnClient.y + (windowData->textBlockOnClient.size().y - windowData->textBlockButtonsSize.y) / 2
+		},
+		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_LEFT_RESIZE);
+
+	DrawButton(windowData,
+		{
+			windowData->textBlockOnClient.x + (windowData->textBlockOnClient.size().x - windowData->textBlockButtonsSize.x) / 2,
+			windowData->textBlockOnClient.y - windowData->textBlockButtonsSize.y
+		},
+		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_BOTTOM_RESIZE);
+	//<
 }
 
 void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEMENT uiElement)

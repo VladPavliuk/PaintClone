@@ -45,11 +45,10 @@ void InitWindowData(WindowData* windowData)
 	windowData->isTextEnteringMode = false;
 	windowData->isValidVirtualKeycodeForText = false;
 	windowData->textBuffer = WideString(L"");
-	//ZeroMemory(windowData->textBuffer, 200);
 	windowData->textBlockOnClient = { -1,-1,-1,-1 };
+	windowData->textBlockButtonsSize = { 10, 10 };
 	windowData->cursorPosition = -1;
 	windowData->topLineIndexToShow = 0;
-	//windowData->selectedTextRange = { 2, 7 };
 	windowData->selectedTextStartIndex = -1;
 	windowData->glyphsLayout = NULL;
 }

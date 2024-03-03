@@ -18,7 +18,6 @@ void FillBitmapWithWhite(ubyte4* bitmap, int2 bitmapSize);
 void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color);
 
 void CopyTextBufferToCanvas(WindowData* windowData);
-void DrawTextBufferToClient(WindowData* windowData);
 
 void DrawRect(WindowData* windowData, int x, int y, int width, int height, ubyte3 color);
 void DrawBorderRect(WindowData* windowData, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color);

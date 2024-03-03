@@ -114,78 +114,77 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->isRightButtonHold = true;
 		windowData->wasRightButtonPressed = true;
 
-		if (windowData->isTextEnteringMode)
-		{
-			if (IsInRect(windowData->textBlockOnClient, windowData->mousePosition))
-			{
-				if (GetKeyState(VK_SHIFT) & 0x8000)
-				{
-					if (windowData->selectedTextStartIndex == -1)
-						windowData->selectedTextStartIndex = windowData->cursorPosition;
-				}
-				else
-				{
-					windowData->selectedTextStartIndex = -1;
-				}
+		//if (windowData->isTextEnteringMode)
+		//{
+		//	if (IsInRect(windowData->textBlockOnClient, windowData->mousePosition))
+		//	{
+		//		if (GetKeyState(VK_SHIFT) & 0x8000)
+		//		{
+		//			if (windowData->selectedTextStartIndex == -1)
+		//				windowData->selectedTextStartIndex = windowData->cursorPosition;
+		//		}
+		//		else
+		//		{
+		//			windowData->selectedTextStartIndex = -1;
+		//		}
 
-				int textBlockHeight = windowData->textBlockOnClient.size().y;
-				int visibleLinesCount = textBlockHeight / windowData->fontData.lineHeight;
-				int lineIndex = (windowData->textBlockOnClient.w - windowData->mousePosition.y) / windowData->fontData.lineHeight;
+		//		int textBlockHeight = windowData->textBlockOnClient.size().y;
+		//		int visibleLinesCount = textBlockHeight / windowData->fontData.lineHeight;
+		//		int lineIndex = (windowData->textBlockOnClient.w - windowData->mousePosition.y) / windowData->fontData.lineHeight;
 
-				lineIndex += windowData->topLineIndexToShow;
-				int mouseLeftOffset = windowData->mousePosition.x - windowData->textBlockOnClient.x;
+		//		lineIndex += windowData->topLineIndexToShow;
+		//		int mouseLeftOffset = windowData->mousePosition.x - windowData->textBlockOnClient.x;
 
-				if (lineIndex >= windowData->glyphsLayout->length)
-				{
-					int lastLindeIndex = windowData->glyphsLayout->length - 1;
-					auto lastLine = windowData->glyphsLayout->get(lastLindeIndex);
-					int2 symbol = lastLine.get(lastLine.length - 1);
-					windowData->cursorPosition = symbol.y;
-				}
-				else
-				{
-					auto line = windowData->glyphsLayout->get(lineIndex);
+		//		if (lineIndex >= windowData->glyphsLayout->length)
+		//		{
+		//			int lastLindeIndex = windowData->glyphsLayout->length - 1;
+		//			auto lastLine = windowData->glyphsLayout->get(lastLindeIndex);
+		//			int2 symbol = lastLine.get(lastLine.length - 1);
+		//			windowData->cursorPosition = symbol.y;
+		//		}
+		//		else
+		//		{
+		//			auto line = windowData->glyphsLayout->get(lineIndex);
 
-					for (int i = 0; i < line.length; i++)
-					{
-						int2 symbol = line.get(i);
+		//			for (int i = 0; i < line.length; i++)
+		//			{
+		//				int2 symbol = line.get(i);
 
-						if (mouseLeftOffset < symbol.x)
-						{
-							bool hasPrevSymbol = i > 0;
-							if (hasPrevSymbol)
-							{
-								int2 prevSymbol = line.get(i - 1);
+		//				if (mouseLeftOffset < symbol.x)
+		//				{
+		//					bool hasPrevSymbol = i > 0;
+		//					if (hasPrevSymbol)
+		//					{
+		//						int2 prevSymbol = line.get(i - 1);
 
-								if ((symbol.x - mouseLeftOffset) < (mouseLeftOffset - prevSymbol.x))
-								{
-									windowData->cursorPosition = symbol.y;
-								}
-							}
-							break;
-						}
+		//						if ((symbol.x - mouseLeftOffset) < (mouseLeftOffset - prevSymbol.x))
+		//						{
+		//							windowData->cursorPosition = symbol.y;
+		//						}
+		//					}
+		//					break;
+		//				}
 
-						windowData->cursorPosition = symbol.y;
-					}
-				}
-			}
-			else
-			{
-				// exit text entering mode
-				if (windowData->textBuffer.length > 0)
-				{
-					//CopyTextBufferToCanvas(windowData);
-				}
+		//				windowData->cursorPosition = symbol.y;
+		//			}
+		//		}
+		//	}
+		//	else
+		//	{
+		//		// exit text entering mode
+		//		if (windowData->textBuffer.length > 0)
+		//		{
+		//			//CopyTextBufferToCanvas(windowData);
+		//		}
 
-				windowData->isTextEnteringMode = false;
-				windowData->textBlockOnClient = { -1,-1,-1,-1 };
-				windowData->cursorPosition = -1;
-				windowData->topLineIndexToShow = 0;
-				windowData->selectedTextStartIndex = -1;
-				//windowData->cursorLayoutPosition = { -1, -1 };
-				windowData->textBuffer.clear();
-			}
-		}
+		//		windowData->isTextEnteringMode = false;
+		//		windowData->textBlockOnClient = { -1,-1,-1,-1 };
+		//		windowData->cursorPosition = -1;
+		//		windowData->topLineIndexToShow = 0;
+		//		windowData->selectedTextStartIndex = -1;
+		//		windowData->textBuffer.clear();
+		//	}
+		//}
 		SetCapture(hwnd);
 		break;
 	}
@@ -702,14 +701,24 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		DrawDrawingCanvas(&windowData);
 		DrawDraggableCornerOfDrawingZone(&windowData);
 
-		DrawTextBufferToClient(&windowData);
+		DrawTextBlock(&windowData);
+		DrawTextBlockResizeButtons(&windowData);
 
 		// NOTE: when charger is not connected to the laptop, it has around 10x slower performance!
 		BitBlt(windowData.windowDC,
 			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
 			windowData.backgroundDC, 0, 0, SRCCOPY);
 
+		/*if (windowData.activeUi == UI_ELEMENT::TEXT_BLOCK)
+		{
+			OutputDebugString(L"MMMMM\n");
+		}*/
+
 		HandleUiElements(&windowData);
+		
+		windowData.sumbitedUi = UI_ELEMENT::NONE;
+		windowData.sumbitedOnAnyHotUi = UI_ELEMENT::NONE;
+
 		windowData.prevMousePosition = windowData.mousePosition;
 		windowData.prevHotUi = windowData.hotUi;
 		windowData.hotUi = UI_ELEMENT::NONE;

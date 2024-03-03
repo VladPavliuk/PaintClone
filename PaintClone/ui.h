@@ -45,4 +45,8 @@ void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>*
 void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
 	int2 singleToolTileSize, int yDistanceToNextToolTile);
 void DrawDraggableCornerOfDrawingZone(WindowData* windowData);
+
+void DrawTextBlock(WindowData* windowData);
+void DrawTextBlockResizeButtons(WindowData* windowData);
+
 void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEMENT uiElement);
