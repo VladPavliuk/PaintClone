@@ -228,46 +228,6 @@ void CopyTextBufferToCanvas(WindowData* windowData)
 			}
 		}
 	}
-
-	//for (int i = 0; i < windowData->textBuffer.length; i++)
-	//{
-	//	wchar_t code = windowData->textBuffer.chars[i];
-	//	RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
-
-	//	int2 position = {
-	//		bottomLeft.x + rasterizedGlyph.leftSideBearings,
-	//		bottomLeft.y + rasterizedGlyph.boundaries.y + -windowData->fontData.descent
-	//	};
-
-	//	if (rasterizedGlyph.hasBitmap)
-	//	{
-	//		CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
-	//			windowData->drawingBitmap, position, windowData->drawingBitmapSize);
-	//	}
-	//	//if (rasterizedGlyph.bitmapSize.x > windowData->drawingBitmapSize.x) continue;
-
-	//	bottomLeft.x += rasterizedGlyph.advanceWidth;
-
-	//	int nextSymbolWidth = 0;
-	//	if (i < windowData->textBuffer.length - 1)
-	//	{
-	//		wchar_t nextCode = windowData->textBuffer.chars[i + 1];
-	//		RasterizedGlyph nextRasterizedGlyph = windowData->fontData.glyphs.get(nextCode);
-	//		nextSymbolWidth = nextRasterizedGlyph.advanceWidth;
-	//	}
-
-	//	if (bottomLeft.x + nextSymbolWidth > textBlockOnCanvas.z)
-	//	{
-	//		bottomLeft.y -= windowData->fontData.lineHeight;
-	//		textBlockOnCanvas.y = bottomLeft.y;
-
-	//		if (textBlockOnCanvas.y < windowData->drawingZone.y)
-	//		{
-	//			break;
-	//		}
-	//		bottomLeft.x = textBlockOnCanvas.x;
-	//	}
-	//}
 }
 
 void DrawRect(WindowData* windowData, int x, int y, int width, int height, ubyte3 color)
@@ -301,6 +261,47 @@ void DrawBorderRect(WindowData* windowData, int2 bottomLeft, int2 size, int line
 
 	// right
 	DrawRect(windowData, bottomLeft.x + size.x - lineWidth, bottomLeft.y, lineWidth, size.y, color);
+}
+
+int4 ClipRect(int4 rectSource, int4 rectDest)
+{
+	int4 clippedRect = rectSource;
+
+	if (rectSource.x < rectDest.x) clippedRect.x = rectDest.x;
+	if (rectSource.y < rectDest.y) clippedRect.y = rectDest.y;
+
+	if (rectSource.z > rectDest.z) clippedRect.z = rectDest.z;
+	if (rectSource.w > rectDest.w) clippedRect.w = rectDest.w;
+
+	return clippedRect;
+}
+
+int4 ClipRect(int4 rectSource, int2 rectDest)
+{
+	return ClipRect(rectSource, { 0, 0, rectDest.x, rectDest.y });
+}
+
+int2 ClipPoint(int2 point, int4 rect)
+{
+	int2 clippedPoint = point;
+
+	if (point.x < rect.x) clippedPoint.x = rect.x;
+	else if (point.x > rect.z) clippedPoint.x = rect.z;
+
+	if (point.y < rect.y) clippedPoint.y = rect.y;
+	else if (point.y > rect.w) clippedPoint.y = rect.w;
+
+	return clippedPoint;
+}
+
+int ClipPoint(int point, int2 range)
+{
+	int clippedPoint = point;
+
+	if (point < range.x) clippedPoint = range.x;
+	else if (point > range.y) clippedPoint = range.y;
+
+	return clippedPoint;
 }
 
 // TODO: current algorithm is to slow

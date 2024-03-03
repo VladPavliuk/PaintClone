@@ -32,18 +32,23 @@ void HandleUiElements(WindowData* windowData)
 			//		if mode on and click in box ...
 			// if mode on and click outside box, create empty box
 
-			//> clear previuos state of text block
-			if (windowData->textBuffer.length > 0)
+			if (windowData->isTextEnteringMode)
 			{
-				CopyTextBufferToCanvas(windowData);
-			}
+				//> clear previuos state of text block
+				if (windowData->textBuffer.length > 0)
+				{
+					CopyTextBufferToCanvas(windowData);
+				}
 
-			windowData->textBlockOnClient = { -1,-1,-1,-1 };
-			windowData->cursorPosition = -1;
-			windowData->topLineIndexToShow = 0;
-			windowData->selectedTextStartIndex = -1;
-			windowData->textBuffer.clear();
-			//<
+				windowData->textBlockOnClient = { -1,-1,-1,-1 };
+				windowData->cursorPosition = -1;
+				windowData->topLineIndexToShow = 0;
+				windowData->selectedTextStartIndex = -1;
+				windowData->textBuffer.clear();
+				windowData->isTextEnteringMode = false;
+				break;
+				//<
+			}
 
 			// create text block state
 			int defaultLinesPerBlock = 3;
@@ -71,6 +76,29 @@ void HandleUiElements(WindowData* windowData)
 			windowData->cursorPosition = 0;
 
 			windowData->isTextEnteringMode = true;
+			break;
+		}
+		case DRAW_TOOL::ERASER:
+		{
+			int2 centerEraserPosition = windowData->mousePosition;
+			centerEraserPosition = ConvertFromScreenToDrawingCoords(windowData, centerEraserPosition);
+
+			centerEraserPosition -= windowData->eraserBoxSize / 2.0f;
+
+			int4 rectToErase = { centerEraserPosition.x, centerEraserPosition.y,
+				centerEraserPosition.x + windowData->eraserBoxSize, centerEraserPosition.y + windowData->eraserBoxSize };
+
+			rectToErase = ClipRect(rectToErase, windowData->drawingBitmapSize);
+
+			for (int i = rectToErase.y; i < rectToErase.w; i++)
+			{
+				for (int j = rectToErase.x; j < rectToErase.z; j++)
+				{
+					int2 pixelToErase = { j, i };
+
+					DrawPixel(windowData->drawingBitmap, windowData->drawingBitmapSize, pixelToErase, { 255, 255, 255 });
+				}
+			}
 			break;
 		}
 		}
@@ -296,8 +324,8 @@ void HandleUiElements(WindowData* windowData)
 
 			prevMouse.x -= windowData->eraserBoxSize / 2.0f;
 			prevMouse.y -= windowData->eraserBoxSize / 2.0f;
-			// sqare eraser
-			/*for (int i = 0; i < windowData->eraserBoxSize; i++)
+			// square eraser
+			for (int i = 0; i < windowData->eraserBoxSize; i++)
 			{
 				for (int j = 0; j < windowData->eraserBoxSize; j++)
 				{
@@ -307,10 +335,10 @@ void HandleUiElements(WindowData* windowData)
 					DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize,
 						drawingRect, fromPixelToErase, toPixelToErase, { 255, 255, 255 });
 				}
-			}*/
+			}
 
 			// circle eraser
-			float radius = (float)windowData->eraserBoxSize / 2.0f;
+			/*float radius = (float)windowData->eraserBoxSize / 2.0f;
 			for (int i = 0; i < windowData->eraserBoxSize; i++)
 			{
 				for (int j = 0; j < windowData->eraserBoxSize; j++)
@@ -325,15 +353,13 @@ void HandleUiElements(WindowData* windowData)
 						continue;
 					}
 
-					//i , j
-
 					int2 fromPixelToErase = { mouse.x + i, mouse.y + j };
 					int2 toPixelToErase = { prevMouse.x + i, prevMouse.y + j };
 
 					DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize,
 						drawingRect, fromPixelToErase, toPixelToErase, { 255, 255, 255 });
 				}
-			}
+			}*/
 		}
 
 		break;
@@ -360,27 +386,22 @@ void HandleUiElements(WindowData* windowData)
 	{
 		if (!windowData->mousePositionChanged) break;
 
-		windowData->textBlockOnClient.x = windowData->mousePosition.x + windowData->activeUiOffset.x;
+		int2 topLeftCorner = {
+			windowData->mousePosition.x + windowData->activeUiOffset.x,
+			windowData->mousePosition.y - windowData->activeUiOffset.y
+		};
 
-		if (windowData->textBlockOnClient.x > windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.x = windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x;
-		}
-		else if (windowData->textBlockOnClient.x < windowData->drawingZone.x + windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.x = windowData->drawingZone.x + windowData->textBlockButtonsSize.x;
-		}
+		int4 possiblePositionsZone = {
+			windowData->drawingZone.x + windowData->textBlockButtonsSize.x,
+			windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y,
+			windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x,
+			windowData->drawingZone.w - windowData->textBlockButtonsSize.y
+		};
 
-		windowData->textBlockOnClient.w = windowData->mousePosition.y - windowData->activeUiOffset.y;
+		topLeftCorner = ClipPoint(topLeftCorner, possiblePositionsZone);
 
-		if (windowData->textBlockOnClient.w < windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.w = windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y;
-		}
-		else if (windowData->textBlockOnClient.w > windowData->drawingZone.w - windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.w = windowData->drawingZone.w - windowData->textBlockButtonsSize.y;
-		}
+		windowData->textBlockOnClient.x = topLeftCorner.x;
+		windowData->textBlockOnClient.w = topLeftCorner.y;
 
 		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
 		break;
@@ -389,27 +410,22 @@ void HandleUiElements(WindowData* windowData)
 	{
 		if (!windowData->mousePositionChanged) break;
 
-		windowData->textBlockOnClient.z = windowData->mousePosition.x - windowData->activeUiOffset.x;
+		int2 topRightCorner = {
+			windowData->mousePosition.x - windowData->activeUiOffset.x,
+			windowData->mousePosition.y - windowData->activeUiOffset.y
+		};
 
-		if (windowData->textBlockOnClient.z > windowData->drawingZone.z - windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.z = windowData->drawingZone.z - windowData->textBlockButtonsSize.x;
-		}
-		else if (windowData->textBlockOnClient.z < windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.z = windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x;
-		}
+		int4 possiblePositionsZone = {
+			windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x,
+			windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y,
+			windowData->drawingZone.z - windowData->textBlockButtonsSize.x,
+			windowData->drawingZone.w - windowData->textBlockButtonsSize.y
+		};
 
-		windowData->textBlockOnClient.w = windowData->mousePosition.y - windowData->activeUiOffset.y;
+		topRightCorner = ClipPoint(topRightCorner, possiblePositionsZone);
 
-		if (windowData->textBlockOnClient.w < windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.w = windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y;
-		}
-		else if (windowData->textBlockOnClient.w > windowData->drawingZone.w - windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.w = windowData->drawingZone.w - windowData->textBlockButtonsSize.y;
-		}
+		windowData->textBlockOnClient.z = topRightCorner.x;
+		windowData->textBlockOnClient.w = topRightCorner.y;
 
 		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
 		break;
@@ -418,27 +434,22 @@ void HandleUiElements(WindowData* windowData)
 	{
 		if (!windowData->mousePositionChanged) break;
 
-		windowData->textBlockOnClient.z = windowData->mousePosition.x - windowData->activeUiOffset.x;
+		int2 bottomRightCorner = {
+			windowData->mousePosition.x - windowData->activeUiOffset.x,
+			windowData->mousePosition.y + windowData->activeUiOffset.y
+		};
 
-		if (windowData->textBlockOnClient.z > windowData->drawingZone.z - windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.z = windowData->drawingZone.z - windowData->textBlockButtonsSize.x;
-		}
-		else if (windowData->textBlockOnClient.z < windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.z = windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x;
-		}
+		int4 possiblePositionsZone = {
+			windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x,
+			windowData->drawingZone.y + windowData->textBlockButtonsSize.y,
+			windowData->drawingZone.z - windowData->textBlockButtonsSize.x,
+			windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y
+		};
 
-		windowData->textBlockOnClient.y = windowData->mousePosition.y + windowData->activeUiOffset.y;
+		bottomRightCorner = ClipPoint(bottomRightCorner, possiblePositionsZone);
 
-		if (windowData->textBlockOnClient.y < windowData->drawingZone.y + windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.y = windowData->drawingZone.y + windowData->textBlockButtonsSize.y;
-		}
-		else if (windowData->textBlockOnClient.y > windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.y = windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y;
-		}
+		windowData->textBlockOnClient.z = bottomRightCorner.x;
+		windowData->textBlockOnClient.y = bottomRightCorner.y;
 
 		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
 		break;
@@ -447,27 +458,22 @@ void HandleUiElements(WindowData* windowData)
 	{
 		if (!windowData->mousePositionChanged) break;
 
-		windowData->textBlockOnClient.x = windowData->mousePosition.x + windowData->activeUiOffset.x;
+		int2 bottomRightCorner = {
+			windowData->mousePosition.x + windowData->activeUiOffset.x,
+			windowData->mousePosition.y + windowData->activeUiOffset.y
+		};
 
-		if (windowData->textBlockOnClient.x > windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.x = windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x;
-		}
-		else if (windowData->textBlockOnClient.x < windowData->drawingZone.x + windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.x = windowData->drawingZone.x + windowData->textBlockButtonsSize.x;
-		}
+		int4 possiblePositionsZone = {
+			windowData->drawingZone.x + windowData->textBlockButtonsSize.x,
+			windowData->drawingZone.y + windowData->textBlockButtonsSize.y,
+			windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x,
+			windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y
+		};
 
-		windowData->textBlockOnClient.y = windowData->mousePosition.y + windowData->activeUiOffset.y;
+		bottomRightCorner = ClipPoint(bottomRightCorner, possiblePositionsZone);
 
-		if (windowData->textBlockOnClient.y < windowData->drawingZone.y + windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.y = windowData->drawingZone.y + windowData->textBlockButtonsSize.y;
-		}
-		else if (windowData->textBlockOnClient.y > windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.y = windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y;
-		}
+		windowData->textBlockOnClient.x = bottomRightCorner.x;
+		windowData->textBlockOnClient.y = bottomRightCorner.y;
 
 		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
 		break;
@@ -476,16 +482,12 @@ void HandleUiElements(WindowData* windowData)
 	{
 		if (!windowData->mousePositionChanged) break;
 
-		windowData->textBlockOnClient.w = windowData->mousePosition.y - windowData->activeUiOffset.y;
+		int topPosition = windowData->mousePosition.y - windowData->activeUiOffset.y;
+		int2 possibleTopPositionsRange = {
+			windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y,
+			windowData->drawingZone.w - windowData->textBlockButtonsSize.y };
 
-		if (windowData->textBlockOnClient.w < windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.w = windowData->textBlockOnClient.y + windowData->textBlockButtonsSize.y;
-		}
-		else if (windowData->textBlockOnClient.w > windowData->drawingZone.w - windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.w = windowData->drawingZone.w - windowData->textBlockButtonsSize.y;
-		}
+		windowData->textBlockOnClient.w = ClipPoint(topPosition, possibleTopPositionsRange);
 
 		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
 		break;
@@ -494,16 +496,13 @@ void HandleUiElements(WindowData* windowData)
 	{
 		if (!windowData->mousePositionChanged) break;
 
-		windowData->textBlockOnClient.z = windowData->mousePosition.x - windowData->activeUiOffset.x;
+		int rightPosition = windowData->mousePosition.x - windowData->activeUiOffset.x;
 
-		if (windowData->textBlockOnClient.z > windowData->drawingZone.z - windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.z = windowData->drawingZone.z - windowData->textBlockButtonsSize.x;
-		}
-		else if (windowData->textBlockOnClient.z < windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.z = windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x;
-		}
+		int2 possibleRightPositionsRange = {
+			windowData->textBlockOnClient.x + windowData->textBlockButtonsSize.x,
+			windowData->drawingZone.z - windowData->textBlockButtonsSize.x };
+
+		windowData->textBlockOnClient.z = ClipPoint(rightPosition, possibleRightPositionsRange);
 
 		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
 		break;
@@ -512,16 +511,13 @@ void HandleUiElements(WindowData* windowData)
 	{
 		if (!windowData->mousePositionChanged) break;
 
-		windowData->textBlockOnClient.y = windowData->mousePosition.y + windowData->activeUiOffset.y;
+		int bottomPosition = windowData->mousePosition.y + windowData->activeUiOffset.y;
 
-		if (windowData->textBlockOnClient.y < windowData->drawingZone.y + windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.y = windowData->drawingZone.y + windowData->textBlockButtonsSize.y;
-		}
-		else if (windowData->textBlockOnClient.y > windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y)
-		{
-			windowData->textBlockOnClient.y = windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y;
-		}
+		int2 possibleBottomPositionsRange = {
+			windowData->drawingZone.y + windowData->textBlockButtonsSize.y,
+			windowData->textBlockOnClient.w - windowData->textBlockButtonsSize.y };
+
+		windowData->textBlockOnClient.y = ClipPoint(bottomPosition, possibleBottomPositionsRange);
 
 		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
 		break;
@@ -530,18 +526,48 @@ void HandleUiElements(WindowData* windowData)
 	{
 		if (!windowData->mousePositionChanged) break;
 
-		windowData->textBlockOnClient.x = windowData->mousePosition.x + windowData->activeUiOffset.x;
+		int leftPosition = windowData->mousePosition.x + windowData->activeUiOffset.x;
 
-		if (windowData->textBlockOnClient.x > windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.x = windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.x;
-		}
-		else if (windowData->textBlockOnClient.x < windowData->drawingZone.x + windowData->textBlockButtonsSize.x)
-		{
-			windowData->textBlockOnClient.x = windowData->drawingZone.x + windowData->textBlockButtonsSize.x;
-		}
+		int2 possibleBottomPositionsRange = {
+			windowData->drawingZone.x + windowData->textBlockButtonsSize.y,
+			windowData->textBlockOnClient.z - windowData->textBlockButtonsSize.y };
+
+		windowData->textBlockOnClient.x = ClipPoint(leftPosition, possibleBottomPositionsRange);
 
 		RecreateGlyphsLayout(windowData, windowData->textBuffer, windowData->textBlockOnClient.size().x);
+		break;
+	}
+	}
+
+	switch (windowData->hotUi)
+	{
+	case UI_ELEMENT::DRAWING_CANVAS:
+	{
+		switch (windowData->selectedTool)
+		{
+		case DRAW_TOOL::ERASER:
+		{
+			int erazerBoxSize = windowData->eraserBoxSize * windowData->drawingZoomLevel;
+			int2 eraserCenter = windowData->mousePosition;
+			eraserCenter -= erazerBoxSize / 2;
+
+			int4 eraserRect = { eraserCenter.x, eraserCenter.y, eraserCenter.x + erazerBoxSize, eraserCenter.y + erazerBoxSize };
+
+			eraserRect = ClipRect(eraserRect, windowData->drawingZone);
+			int2 eraserRectSize = eraserRect.size();
+
+			DrawRect(windowData,
+				eraserRect.x, eraserRect.y,
+				eraserRectSize.x, eraserRectSize.y,
+				{ 255,255,255 });
+
+			DrawBorderRect(windowData,
+				eraserRect.xy(),
+				eraserRectSize,
+				1, { 0,0,0 });
+			break;
+		}
+		}
 		break;
 	}
 	}

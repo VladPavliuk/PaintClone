@@ -705,17 +705,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		DrawTextBlock(&windowData);
 		DrawTextBlockResizeButtons(&windowData);
 
+		HandleUiElements(&windowData);
+
 		// NOTE: when charger is not connected to the laptop, it has around 10x slower performance!
 		BitBlt(windowData.windowDC,
 			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
 			windowData.backgroundDC, 0, 0, SRCCOPY);
 
-		/*if (windowData.activeUi == UI_ELEMENT::TEXT_BLOCK)
-		{
-			OutputDebugString(L"MMMMM\n");
-		}*/
-
-		HandleUiElements(&windowData);
 		
 		windowData.sumbitedUi = UI_ELEMENT::NONE;
 		windowData.sumbitedOnAnyHotUi = UI_ELEMENT::NONE;

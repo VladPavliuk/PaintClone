@@ -49,6 +49,21 @@ struct int2
 		y /= a;
 		return *this;
 	}
+
+	int2& operator+=(int const& a)
+	{
+		x += a;
+		y += a;
+		return *this;
+	}
+
+	int2& operator-=(int const& a)
+	{
+		x -= a;
+		y -= a;
+		return *this;
+	}
+
 };
 
 struct float2
