@@ -9,10 +9,6 @@ void HandleUiElements(WindowData* windowData)
 	{
 		break;
 	}
-	/*case UI_ELEMENT::TEXT_BLOCK:
-	{
-		break;
-	}*/
 	case UI_ELEMENT::DRAWING_CANVAS:
 	{
 		switch (windowData->selectedTool)
@@ -28,10 +24,6 @@ void HandleUiElements(WindowData* windowData)
 		}
 		case DRAW_TOOL::TEXT:
 		{
-			// if mode off, create text block
-			//		if mode on and click in box ...
-			// if mode on and click outside box, create empty box
-
 			if (windowData->isTextEnteringMode)
 			{
 				//> clear previuos state of text block
@@ -55,11 +47,11 @@ void HandleUiElements(WindowData* windowData)
 			int defaultTextBlockWidth = 100 * windowData->drawingZoomLevel;
 			int defaultTextBlockHeight = defaultLinesPerBlock * windowData->fontData.lineHeight * windowData->drawingZoomLevel;
 
-			int4 textBlockRect;
-			textBlockRect.x = windowData->mousePosition.x;
-			textBlockRect.y = windowData->mousePosition.y;
-			textBlockRect.z = minInt(textBlockRect.x + defaultTextBlockWidth, windowData->drawingZone.z);
-			textBlockRect.w = minInt(textBlockRect.y + defaultTextBlockHeight, windowData->drawingZone.w);
+			int4 textBlockRect = int4(windowData->mousePosition, 
+				{ windowData->mousePosition.x + defaultTextBlockWidth, windowData->mousePosition.y + defaultTextBlockHeight });
+
+			textBlockRect = ClipRect(textBlockRect, int4(windowData->drawingZone.xy() + windowData->textBlockButtonsSize,
+				windowData->drawingZone.zw() - windowData->textBlockButtonsSize));
 
 			int test = (textBlockRect.x - windowData->drawingZone.x) % windowData->drawingZoomLevel;
 			int test2 = (textBlockRect.y - windowData->drawingZone.y) % windowData->drawingZoomLevel;
@@ -207,31 +199,16 @@ void HandleUiElements(WindowData* windowData)
 	{
 		int2 drawingZoneCornerResizeSize = windowData->drawingZoneCornerResize.size();
 
-		windowData->drawingZoneCornerResize.xy(windowData->mousePosition - windowData->activeUiOffset);
+		int2 canvasCornerPosition = windowData->mousePosition - windowData->activeUiOffset;
 
-		windowData->drawingZoneCornerResize.zw(windowData->drawingZoneCornerResize.xy() + drawingZoneCornerResizeSize);
+		canvasCornerPosition = ClipPoint(canvasCornerPosition, int4(windowData->drawingZone.xy() + 10, windowData->windowClientSize - 10));
 
-		if (windowData->drawingZoneCornerResize.z > windowData->windowClientSize.x)
-		{
-			windowData->drawingZoneCornerResize.x = windowData->windowClientSize.x - windowData->drawingZoneCornerResize.size().x;
-		}
-		else if (windowData->drawingZoneCornerResize.x < windowData->drawingZone.x + 1)
-		{
-			// add 1 because after resize drawing zone should be at least 1 pixel wide
-			windowData->drawingZoneCornerResize.x = windowData->drawingZone.x + 1;
-		}
+		windowData->drawingZoneCornerResize.xy(canvasCornerPosition);
+		windowData->drawingZoneCornerResize.zw(canvasCornerPosition + 10);
 
-		if (windowData->drawingZoneCornerResize.w > windowData->windowClientSize.y)
-		{
-			windowData->drawingZoneCornerResize.y = windowData->windowClientSize.y - windowData->drawingZoneCornerResize.size().y;
-		}
-		else if (windowData->drawingZoneCornerResize.y < windowData->drawingZone.y + 1)
-		{
-			// add 1 because after resize drawing zone should be at least 1 pixel height
-			windowData->drawingZoneCornerResize.y = windowData->drawingZone.y + 1;
-		}
-
-		windowData->drawingZoneCornerResize.zw(windowData->drawingZoneCornerResize.xy() + drawingZoneCornerResizeSize);
+		// Draw a border rectangle, to better show how current canvas will look after resize
+		DrawBorderRect(windowData, windowData->drawingZone.xy(),
+			canvasCornerPosition - windowData->drawingZone.xy(), 1, { 0, 255, 0 });
 		break;
 	}
 	case UI_ELEMENT::CANVAS_VERTICAL_SCROLL:

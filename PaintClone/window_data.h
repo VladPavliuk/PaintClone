@@ -81,12 +81,16 @@ struct WindowData
 {
 	HDC windowDC;
 	BITMAPINFO windowBitmapInfo;
+	
+	//TODO: combine bitmap data and bitmap size into one structure
 	ubyte4* windowBitmap;
 
 	HDC backgroundDC;
 	HBITMAP backgroundBmp;
 
 	BITMAPINFO drawingBitmapInfo;
+
+	//TODO: combine bitmap data and bitmap size into one structure
 	ubyte4* drawingBitmap;
 	int2 drawingBitmapSize;
 

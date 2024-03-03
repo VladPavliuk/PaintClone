@@ -114,21 +114,9 @@ void ValidateDrawingOffset(WindowData* windowData)
 void CalculateDrawingZoneSize(WindowData* windowData)
 {
 	windowData->drawingZone.zw(windowData->drawingZone.xy() + windowData->drawingBitmapSize);
+	windowData->drawingZone = ClipRect(windowData->drawingZone, int4({ 0,0 }, windowData->windowClientSize - 10));
 
-	int2 drawingZoneCornerResizeSize = windowData->drawingZoneCornerResize.size();
-	if (windowData->drawingZone.z > windowData->windowClientSize.x - drawingZoneCornerResizeSize.x)
-	{
-		windowData->drawingZone.z = windowData->windowClientSize.x - drawingZoneCornerResizeSize.x;
-	}
-
-	if (windowData->drawingZone.w > windowData->windowClientSize.y - drawingZoneCornerResizeSize.y)
-	{
-		windowData->drawingZone.w = windowData->windowClientSize.y - drawingZoneCornerResizeSize.y;
-	}
-
-	windowData->drawingZoneCornerResize.xy(windowData->drawingZone.zw());
-
-	windowData->drawingZoneCornerResize.zw(windowData->drawingZoneCornerResize.xy() + drawingZoneCornerResizeSize);
+	windowData->drawingZoneCornerResize = int4(windowData->drawingZone.zw(), windowData->drawingZone.zw() + 10);
 }
 
 void FillBitmapWithWhite(ubyte4* bitmap, int2 bitmapSize)

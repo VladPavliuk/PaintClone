@@ -36,6 +36,16 @@ struct int2
 		return { a * x, a * y };
 	}
 
+	int2 operator-(int a)
+	{
+		return { x - a, y - a };
+	}
+
+	int2 operator+(int a)
+	{
+		return { x + a, y + a };
+	}
+
 	int2& operator*=(int const& a)
 	{
 		x *= a;
@@ -158,6 +168,21 @@ struct int4
 	int y;
 	int z;
 	int w;
+
+	int4()
+	{}
+
+	int4(int x, int y, int z, int w) :
+		x(x), y(y), z(z), w(w)
+	{}
+
+	int4(int2 xy, int2 zw)
+	{
+		x = xy.x;
+		y = xy.y;
+		z = zw.x;
+		w = zw.y;
+	}
 
 	int2 xy()
 	{
