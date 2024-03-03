@@ -1,4 +1,5 @@
 #include "ui.h"
+#include <cmath>
 
 void HandleUiElements(WindowData* windowData)
 {
@@ -30,7 +31,7 @@ void HandleUiElements(WindowData* windowData)
 			// if mode off, create text block
 			//		if mode on and click in box ...
 			// if mode on and click outside box, create empty box
-			
+
 			//> clear previuos state of text block
 			if (windowData->textBuffer.length > 0)
 			{
@@ -102,6 +103,11 @@ void HandleUiElements(WindowData* windowData)
 		windowData->selectedTool = DRAW_TOOL::TEXT;
 		break;
 	}
+	case UI_ELEMENT::ERASER_TOOL:
+	{
+		windowData->selectedTool = DRAW_TOOL::ERASER;
+		break;
+	}
 	case UI_ELEMENT::COLOR_BRUCH_1:
 	case UI_ELEMENT::COLOR_BRUCH_2:
 	case UI_ELEMENT::COLOR_BRUCH_3:
@@ -128,7 +134,7 @@ void HandleUiElements(WindowData* windowData)
 		break;
 	}
 	}
-	
+
 	switch (windowData->sumbitedOnAnyHotUi)
 	{
 	case UI_ELEMENT::NONE:
@@ -255,6 +261,80 @@ void HandleUiElements(WindowData* windowData)
 				DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize, drawingRect, fromPixel, toPixel, windowData->selectedColor);
 			}
 		}
+		else if (windowData->selectedTool == DRAW_TOOL::ERASER)
+		{
+			int2 mouse = windowData->mousePosition;
+			int2 prevMouse = windowData->prevMousePosition;
+
+			if (!IsInRect(windowData->drawingZone, mouse))
+			{
+				break;
+			}
+
+			int4 drawingRect;
+
+			drawingRect.x = 0;
+			drawingRect.y = 0;
+			drawingRect.z = windowData->drawingZone.size().x;
+			drawingRect.w = windowData->drawingZone.size().y;
+
+			drawingRect.x += windowData->drawingOffset.x;
+			drawingRect.y += windowData->drawingOffset.y;
+			drawingRect.z += windowData->drawingOffset.x;
+			drawingRect.w += windowData->drawingOffset.y;
+
+			drawingRect.x = (int)((float)drawingRect.x / (float)windowData->drawingZoomLevel);
+			drawingRect.y = (int)((float)drawingRect.y / (float)windowData->drawingZoomLevel);
+			drawingRect.z = (int)((float)drawingRect.z / (float)windowData->drawingZoomLevel);
+			drawingRect.w = (int)((float)drawingRect.w / (float)windowData->drawingZoomLevel);
+
+			mouse = ConvertFromScreenToDrawingCoords(windowData, mouse);
+			prevMouse = ConvertFromScreenToDrawingCoords(windowData, prevMouse);
+
+			mouse.x -= windowData->eraserBoxSize / 2.0f;
+			mouse.y -= windowData->eraserBoxSize / 2.0f;
+
+			prevMouse.x -= windowData->eraserBoxSize / 2.0f;
+			prevMouse.y -= windowData->eraserBoxSize / 2.0f;
+			// sqare eraser
+			/*for (int i = 0; i < windowData->eraserBoxSize; i++)
+			{
+				for (int j = 0; j < windowData->eraserBoxSize; j++)
+				{
+					int2 fromPixelToErase = { mouse.x + i, mouse.y + j };
+					int2 toPixelToErase = { prevMouse.x + i, prevMouse.y + j };
+
+					DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize,
+						drawingRect, fromPixelToErase, toPixelToErase, { 255, 255, 255 });
+				}
+			}*/
+
+			// circle eraser
+			float radius = (float)windowData->eraserBoxSize / 2.0f;
+			for (int i = 0; i < windowData->eraserBoxSize; i++)
+			{
+				for (int j = 0; j < windowData->eraserBoxSize; j++)
+				{
+					float x = i - radius;
+					float y = j - radius;
+
+					float test = sqrt(y * y + x * x);
+
+					if (test > radius)
+					{
+						continue;
+					}
+
+					//i , j
+
+					int2 fromPixelToErase = { mouse.x + i, mouse.y + j };
+					int2 toPixelToErase = { prevMouse.x + i, prevMouse.y + j };
+
+					DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize,
+						drawingRect, fromPixelToErase, toPixelToErase, { 255, 255, 255 });
+				}
+			}
+		}
 
 		break;
 	}
@@ -262,7 +342,7 @@ void HandleUiElements(WindowData* windowData)
 	{
 		int oldCursorPosition = windowData->cursorPosition;
 		windowData->cursorPosition = GetCursorPositionByMousePosition(windowData);
-		
+
 		if (windowData->wasRightButtonPressed)
 		{
 			if (GetKeyState(VK_SHIFT) & 0x8000)
@@ -618,7 +698,7 @@ void DrawTextBlock(WindowData* windowData)
 	}
 
 	CheckHotActiveForUiElement(windowData, windowData->textBlockOnClient, UI_ELEMENT::TEXT_BLOCK);
-	
+
 	DrawBorderRect(windowData,
 		windowData->textBlockOnClient.xy(),
 		windowData->textBlockOnClient.size(), 1, { 0,255,0 });
@@ -722,7 +802,7 @@ void DrawTextBlockResizeButtons(WindowData* windowData)
 
 	//> edges resize buttons
 	DrawButton(windowData,
-		{ 
+		{
 			windowData->textBlockOnClient.x + (windowData->textBlockOnClient.size().x - windowData->textBlockButtonsSize.x) / 2,
 			windowData->textBlockOnClient.w
 		},
@@ -736,8 +816,8 @@ void DrawTextBlockResizeButtons(WindowData* windowData)
 		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_RIGHT_RESIZE);
 
 	DrawButton(windowData,
-		{ 
-			windowData->textBlockOnClient.x - windowData->textBlockButtonsSize.x, 
+		{
+			windowData->textBlockOnClient.x - windowData->textBlockButtonsSize.x,
 			windowData->textBlockOnClient.y + (windowData->textBlockOnClient.size().y - windowData->textBlockButtonsSize.y) / 2
 		},
 		windowData->textBlockButtonsSize, { 100, 100, 100 }, { 150, 150, 150 }, UI_ELEMENT::TEXT_BLOCK_LEFT_RESIZE);

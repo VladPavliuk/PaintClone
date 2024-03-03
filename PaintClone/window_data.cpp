@@ -51,4 +51,6 @@ void InitWindowData(WindowData* windowData)
 	windowData->topLineIndexToShow = 0;
 	windowData->selectedTextStartIndex = -1;
 	windowData->glyphsLayout = NULL;
+
+	windowData->eraserBoxSize = 50;
 }

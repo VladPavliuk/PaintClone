@@ -642,6 +642,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::FILL_TOOL, DRAW_TOOL::FILL, LoadBmpFile(L"./fill.bmp")));
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::ZOOM_TOOL, DRAW_TOOL::ZOOM, LoadBmpFile(L"./zoom.bmp")));
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::TEXT_TOOL, DRAW_TOOL::TEXT, LoadBmpFile(L"./text.bmp")));
+	windowData.toolTiles.add(ToolTile(UI_ELEMENT::ERASER_TOOL, DRAW_TOOL::ERASER, LoadBmpFile(L"./eraser.bmp")));
 
 	windowData.brushColorTiles = SimpleDynamicArray<BrushColorTile>(10);
 	windowData.brushColorTiles.add(BrushColorTile({ 0, 0, 0 }, UI_ELEMENT::COLOR_BRUCH_1));

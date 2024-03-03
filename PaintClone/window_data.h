@@ -16,7 +16,8 @@ enum class DRAW_TOOL
 	PENCIL,
 	FILL,
 	ZOOM,
-	TEXT
+	TEXT,
+	ERASER
 };
 
 enum class UI_ELEMENT
@@ -43,6 +44,7 @@ enum class UI_ELEMENT
 	FILL_TOOL,
 	ZOOM_TOOL,
 	TEXT_TOOL,
+	ERASER_TOOL,
 
 	COLOR_BRUCH_1,
 	COLOR_BRUCH_2,
@@ -116,6 +118,7 @@ struct WindowData
 	UI_ELEMENT sumbitedOnAnyHotUi; // ui element that is set when press and release happens on any ui element
 	//<
 
+	//> text
 	FontDataRasterized fontData;
 	bool isTextEnteringMode;
 	bool isValidVirtualKeycodeForText;
@@ -127,15 +130,15 @@ struct WindowData
 	int topLineIndexToShow;
 	//int2 selectedTextRange; // from index in text buffer, to index in text buffer
 	int selectedTextStartIndex; // from index in text buffer, to index in text buffer
+	//<
 
 	DRAW_TOOL selectedTool;
-	//SimpleDynamicArray<BmpImage> toolsImages;
 	SimpleDynamicArray<ToolTile> toolTiles;
 
 	ubyte3 selectedColor;
 	SimpleDynamicArray<BrushColorTile> brushColorTiles;
 
-	//SimpleDynamicArray<int2> pixelsToDraw;
+	int eraserBoxSize;
 
 	LARGE_INTEGER perfomanceCounterFreq;
 };
