@@ -11,15 +11,13 @@ void InitWindowData(WindowData* windowData)
 {
 	windowData->windowDC = 0;
 	//windowData->windowBitmapInfo = 0;
-	windowData->windowBitmap = NULL;
+	windowData->windowBitmap = Bitmap(NULL, { -1, -1 });
 
 	windowData->backgroundDC = 0;
 	windowData->backgroundBmp = 0;
 
-	windowData->drawingBitmap = NULL;
 	// works correctly up to 32000x32000 pixels
-	//windowData.drawingBitmapSize = { 3840, 2160 };
-	windowData->drawingBitmapSize = { 800, 800 };
+	windowData->canvasBitmap = Bitmap(NULL, { 800, 800 });
 
 	windowData->drawingZone = { 35, 35, 35, 35 };
 
@@ -28,7 +26,7 @@ void InitWindowData(WindowData* windowData)
 	windowData->drawingZoomLevel = 1;
 	windowData->drawingOffset = { 0, 0 };
 
-	windowData->lastMouseCanvasPosition = {0,0};
+	windowData->lastMouseCanvasPosition = { 0,0 };
 
 	windowData->isRightButtonHold = false;
 	windowData->wasRightButtonPressed = false;

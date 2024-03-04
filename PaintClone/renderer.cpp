@@ -27,7 +27,7 @@ void RecreateBackgroundBmp(WindowData* windowData)
 	SelectObject(windowData->backgroundDC, windowData->backgroundBmp);
 
 	//TODO: Find a faster way to fill default color
-	FillBitmapWithWhite(windowData->windowBitmap, windowData->windowClientSize);
+	FillBitmapWithWhite(windowData->windowBitmap.pixels, windowData->windowBitmap.size);
 }
 
 void InitRenderer(WindowData* windowData, HWND hwnd)
@@ -37,8 +37,8 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 
 	RECT clientRect;
 	GetClientRect(hwnd, &clientRect);
-	windowData->windowClientSize.x = clientRect.right - clientRect.left;
-	windowData->windowClientSize.y = clientRect.bottom - clientRect.top;
+	windowData->windowBitmap.size.x = clientRect.right - clientRect.left;
+	windowData->windowBitmap.size.y = clientRect.bottom - clientRect.top;
 
 	//> automatically select drawing bitmap based on initial window size
 	//windowData->drawingBitmapSize.x = windowData->windowClientSize.x - windowData->drawingZonePosition.x;
@@ -46,8 +46,8 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	//<
 
 	windowData->windowBitmapInfo.bmiHeader.biSize = sizeof(windowData->windowBitmapInfo.bmiHeader);
-	windowData->windowBitmapInfo.bmiHeader.biWidth = windowData->windowClientSize.x;
-	windowData->windowBitmapInfo.bmiHeader.biHeight = windowData->windowClientSize.y;
+	windowData->windowBitmapInfo.bmiHeader.biWidth = windowData->windowBitmap.size.x;
+	windowData->windowBitmapInfo.bmiHeader.biHeight = windowData->windowBitmap.size.y;
 	windowData->windowBitmapInfo.bmiHeader.biPlanes = 1;
 	windowData->windowBitmapInfo.bmiHeader.biBitCount = 32;
 	windowData->windowBitmapInfo.bmiHeader.biCompression = BI_RGB;
@@ -58,8 +58,8 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	windowData->windowBitmapInfo.bmiHeader.biClrImportant = 0;
 
 	windowData->drawingBitmapInfo.bmiHeader.biSize = sizeof(windowData->drawingBitmapInfo.bmiHeader);
-	windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->drawingBitmapSize.x;
-	windowData->drawingBitmapInfo.bmiHeader.biHeight = windowData->drawingBitmapSize.y;
+	windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->canvasBitmap.size.x;
+	windowData->drawingBitmapInfo.bmiHeader.biHeight = windowData->canvasBitmap.size.y;
 	windowData->drawingBitmapInfo.bmiHeader.biPlanes = 1;
 	windowData->drawingBitmapInfo.bmiHeader.biBitCount = 32;
 	windowData->drawingBitmapInfo.bmiHeader.biCompression = BI_RGB;
@@ -69,8 +69,8 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	windowData->drawingBitmapInfo.bmiHeader.biClrUsed = 0;
 	windowData->drawingBitmapInfo.bmiHeader.biClrImportant = 0;
 
-	windowData->drawingBitmap = (ubyte4*)malloc(4 * windowData->drawingBitmapSize.x * windowData->drawingBitmapSize.y);
-	FillBitmapWithWhite(windowData->drawingBitmap, windowData->drawingBitmapSize);
+	windowData->canvasBitmap.pixels = (ubyte4*)malloc(4 * windowData->canvasBitmap.size.x * windowData->canvasBitmap.size.y);
+	FillBitmapWithWhite(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size);
 
 	RecreateBackgroundBmp(windowData);
 	CalculateDrawingZoneSize(windowData);
@@ -86,7 +86,7 @@ void ValidateDrawingOffset(WindowData* windowData)
 	}
 	else
 	{
-		int drawingZoneOffsetY = windowData->drawingZoomLevel * windowData->drawingBitmapSize.y
+		int drawingZoneOffsetY = windowData->drawingZoomLevel * windowData->canvasBitmap.size.y
 			- windowData->drawingZone.size().y - windowData->drawingOffset.y;
 
 		if (drawingZoneOffsetY < 0)
@@ -101,7 +101,7 @@ void ValidateDrawingOffset(WindowData* windowData)
 	}
 	else
 	{
-		int drawingZoneOffsetX = windowData->drawingZoomLevel * windowData->drawingBitmapSize.x
+		int drawingZoneOffsetX = windowData->drawingZoomLevel * windowData->canvasBitmap.size.x
 			- windowData->drawingZone.size().x - windowData->drawingOffset.x;
 
 		if (drawingZoneOffsetX < 0)
@@ -113,8 +113,8 @@ void ValidateDrawingOffset(WindowData* windowData)
 
 void CalculateDrawingZoneSize(WindowData* windowData)
 {
-	windowData->drawingZone.zw(windowData->drawingZone.xy() + windowData->drawingBitmapSize);
-	windowData->drawingZone = ClipRect(windowData->drawingZone, int4({ 0,0 }, windowData->windowClientSize - 10));
+	windowData->drawingZone.zw(windowData->drawingZone.xy() + windowData->canvasBitmap.size);
+	windowData->drawingZone = ClipRect(windowData->drawingZone, int4({ 0,0 }, windowData->windowBitmap.size - 10));
 
 	windowData->drawingZoneCornerResize = int4(windowData->drawingZone.zw(), windowData->drawingZone.zw() + 10);
 }
@@ -211,17 +211,17 @@ void CopyTextBufferToCanvas(WindowData* windowData)
 				if (rasterizedGlyph.hasBitmap)
 				{
 					CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
-						windowData->drawingBitmap, position, windowData->drawingBitmapSize);
+						windowData->canvasBitmap.pixels, position, windowData->canvasBitmap.size);
 				}
 			}
 		}
 	}
 }
 
-void DrawRect(WindowData* windowData, int2 bottomLeft, int2 size, ubyte3 color)
+void DrawRect(Bitmap bitmap, int2 bottomLeft, int2 size, ubyte3 color)
 {
-	ubyte4* currentPixel = windowData->windowBitmap + (bottomLeft.x + windowData->windowClientSize.x * bottomLeft.y);
-	int pitch = windowData->windowClientSize.x;
+	ubyte4* currentPixel = bitmap.pixels + (bottomLeft.x + bitmap.size.x * bottomLeft.y);
+	int pitch = bitmap.size.x;
 
 	for (int i = 0; i < size.y; i++)
 	{
@@ -236,19 +236,19 @@ void DrawRect(WindowData* windowData, int2 bottomLeft, int2 size, ubyte3 color)
 	}
 }
 
-void DrawBorderRect(WindowData* windowData, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color)
+void DrawBorderRect(Bitmap bitmap, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color)
 {
 	// bottom
-	DrawRect(windowData, bottomLeft, { size.x, lineWidth }, color);
+	DrawRect(bitmap, bottomLeft, { size.x, lineWidth }, color);
 
 	// top
-	DrawRect(windowData, { bottomLeft.x, bottomLeft.y + size.y - lineWidth }, { size.x, lineWidth }, color);
+	DrawRect(bitmap, { bottomLeft.x, bottomLeft.y + size.y - lineWidth }, { size.x, lineWidth }, color);
 
 	// left
-	DrawRect(windowData, bottomLeft, { lineWidth, size.y }, color);
+	DrawRect(bitmap, bottomLeft, { lineWidth, size.y }, color);
 
 	// right
-	DrawRect(windowData, { bottomLeft.x + size.x - lineWidth, bottomLeft.y }, { lineWidth, size.y }, color);
+	DrawRect(bitmap, { bottomLeft.x + size.x - lineWidth, bottomLeft.y }, { lineWidth, size.y }, color);
 }
 
 int4 ClipRect(int4 rectSource, int4 rectDest)
@@ -298,7 +298,7 @@ void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color)
 {
 	Queue<int2> queue = Queue<int2>(5);
 
-	ubyte3 previousColor = GetPixelColor(windowData->drawingBitmap, windowData->drawingBitmapSize, fromPixel);
+	ubyte3 previousColor = GetPixelColor(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, fromPixel);
 
 	if (color.x == previousColor.x
 		&& color.y == previousColor.y
@@ -306,7 +306,7 @@ void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color)
 	{
 		return;
 	}
-	DrawPixel(windowData->drawingBitmap, windowData->drawingBitmapSize, fromPixel, color);
+	DrawPixel(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, fromPixel, color);
 
 	queue.enqueue(fromPixel);
 
@@ -321,19 +321,19 @@ void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color)
 
 			int2 neighbourPixel = { fromPixel.x + neighbourDelta.x, fromPixel.y + neighbourDelta.y };
 
-			if (neighbourPixel.x < 0 || neighbourPixel.x >= windowData->drawingBitmapSize.x
-				|| neighbourPixel.y < 0 || neighbourPixel.y >= windowData->drawingBitmapSize.y)
+			if (neighbourPixel.x < 0 || neighbourPixel.x >= windowData->canvasBitmap.size.x
+				|| neighbourPixel.y < 0 || neighbourPixel.y >= windowData->canvasBitmap.size.y)
 			{
 				continue;
 			}
 
-			ubyte3 previousNeighbourColor = GetPixelColor(windowData->drawingBitmap, windowData->drawingBitmapSize, neighbourPixel);
+			ubyte3 previousNeighbourColor = GetPixelColor(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, neighbourPixel);
 
 			if (previousNeighbourColor.x == previousColor.x
 				&& previousNeighbourColor.y == previousColor.y
 				&& previousNeighbourColor.z == previousColor.z)
 			{
-				DrawPixel(windowData->drawingBitmap, windowData->drawingBitmapSize, neighbourPixel, color);
+				DrawPixel(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, neighbourPixel, color);
 
 				queue.enqueue(neighbourPixel);
 			}
@@ -365,7 +365,7 @@ void DrawBitmap(WindowData* windowData, ubyte4* bitmapToCopy, int2 bottomLeft, i
 	{
 		for (int x = 0; x < bitmapSize.x; x++)
 		{
-			windowData->windowBitmap[bottomLeft.x + x + (bottomLeft.y + y) * windowData->windowClientSize.x]
+			windowData->windowBitmap.pixels[bottomLeft.x + x + (bottomLeft.y + y) * windowData->windowBitmap.size.x]
 				= bitmapToCopy[x + y * bitmapSize.x];
 		}
 	}

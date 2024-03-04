@@ -79,24 +79,31 @@ struct ToolTile
 	BmpImage image;
 };
 
+struct Bitmap
+{
+	Bitmap()
+	{}
 
+	Bitmap(ubyte4* pixels, int2 size):
+		pixels(pixels), size(size)
+	{}
+
+	ubyte4* pixels;
+	int2 size;
+};
 
 struct WindowData
 {
 	HDC windowDC;
 	BITMAPINFO windowBitmapInfo;
 	
-	//TODO: combine bitmap data and bitmap size into one structure
-	ubyte4* windowBitmap;
+	Bitmap windowBitmap;
+	Bitmap canvasBitmap;
 
 	HDC backgroundDC;
 	HBITMAP backgroundBmp;
 
 	BITMAPINFO drawingBitmapInfo;
-
-	//TODO: combine bitmap data and bitmap size into one structure
-	ubyte4* drawingBitmap;
-	int2 drawingBitmapSize;
 
 	int4 drawingZone; // relative to client rect
 
@@ -105,8 +112,6 @@ struct WindowData
 
 	int drawingZoomLevel;
 	int2 drawingOffset; // relative to bottom-left point
-
-	int2 windowClientSize;
 
 	int2 prevMousePosition;
 	int2 mousePosition;
@@ -133,11 +138,10 @@ struct WindowData
 	bool isValidVirtualKeycodeForText;
 	int4 textBlockOnClient;
 	int2 textBlockButtonsSize;
-	WideString textBuffer; // TODO: make it dyanmic
+	WideString textBuffer;
 	SimpleDynamicArray<SimpleDynamicArray<int2>>* glyphsLayout;
 	int cursorPosition;
 	int topLineIndexToShow;
-	//int2 selectedTextRange; // from index in text buffer, to index in text buffer
 	int selectedTextStartIndex; // from index in text buffer, to index in text buffer
 	//<
 

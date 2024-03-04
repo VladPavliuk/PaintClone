@@ -19,8 +19,8 @@ void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color);
 
 void CopyTextBufferToCanvas(WindowData* windowData);
 
-void DrawRect(WindowData* windowData, int2 bottomLeft, int2 size, ubyte3 color);
-void DrawBorderRect(WindowData* windowData, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color);
+void DrawRect(Bitmap bitmap, int2 bottomLeft, int2 size, ubyte3 color);
+void DrawBorderRect(Bitmap bitmap, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color);
 
 int4 ClipRect(int4 rectSource, int4 rectDest);
 int4 ClipRect(int4 rectSource, int2 rectDest);

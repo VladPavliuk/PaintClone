@@ -473,7 +473,7 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		int xMouse = GET_X_LPARAM(lParam);
 		int yMouse = GET_Y_LPARAM(lParam);
 
-		yMouse = windowData->windowClientSize.y - yMouse;
+		yMouse = windowData->windowBitmap.size.y - yMouse;
 
 		windowData->mousePosition = { xMouse, yMouse };
 		windowData->mousePositionChanged = true;
@@ -509,15 +509,15 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		}
 		RECT clientRect;
 		GetClientRect(hwnd, &clientRect);
-		windowData->windowClientSize.x = clientRect.right - clientRect.left;
-		windowData->windowClientSize.y = clientRect.bottom - clientRect.top;
+		windowData->windowBitmap.size.x = clientRect.right - clientRect.left;
+		windowData->windowBitmap.size.y = clientRect.bottom - clientRect.top;
 
 		//SIZE_MAXIMIZED;
 		//SIZE_RESTORED;
 		// SIZE_MINIMIZED
 		//int test = wParam;
-		windowData->windowBitmapInfo.bmiHeader.biWidth = windowData->windowClientSize.x;
-		windowData->windowBitmapInfo.bmiHeader.biHeight = windowData->windowClientSize.y;
+		windowData->windowBitmapInfo.bmiHeader.biWidth = windowData->windowBitmap.size.x;
+		windowData->windowBitmapInfo.bmiHeader.biHeight = windowData->windowBitmap.size.y;
 
 		RecreateBackgroundBmp(windowData);
 		CalculateDrawingZoneSize(windowData);
@@ -630,7 +630,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 		double timeDelta = GetCurrentTimestamp(&windowData);
 
-		FillBitmapWithWhite(windowData.windowBitmap, windowData.windowClientSize);
+		FillBitmapWithWhite(windowData.windowBitmap.pixels, windowData.windowBitmap.size);
 		// ui
 		DrawColorsBrush(&windowData, &windowData.brushColorTiles, { 5, 5 }, { 15, 15 }, 5);
 		DrawToolsPanel(&windowData, { 5, 30 }, { 15, 15 }, 5);
@@ -638,13 +638,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		int2 drawingZoneSize = windowData.drawingZone.size();
 		StretchDIBits(
 			windowData.backgroundDC,
-			windowData.drawingZone.x, windowData.windowClientSize.y - windowData.drawingZone.y - drawingZoneSize.y,
+			windowData.drawingZone.x, windowData.windowBitmap.size.y - windowData.drawingZone.y - drawingZoneSize.y,
 			drawingZoneSize.x, drawingZoneSize.y,
 
 			(int)((float)windowData.drawingOffset.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingOffset.y / (float)windowData.drawingZoomLevel),
 			(int)((float)drawingZoneSize.x / (float)windowData.drawingZoomLevel), (int)((float)drawingZoneSize.y / (float)windowData.drawingZoomLevel),
 
-			windowData.drawingBitmap,
+			windowData.canvasBitmap.pixels,
 			&windowData.drawingBitmapInfo,
 			DIB_RGB_COLORS, SRCCOPY
 		);
@@ -662,7 +662,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 		// NOTE: when charger is not connected to the laptop, it has around 10x slower performance!
 		BitBlt(windowData.windowDC,
-			0, 0, windowData.windowClientSize.x, windowData.windowClientSize.y,
+			0, 0, windowData.windowBitmap.size.x, windowData.windowBitmap.size.y,
 			windowData.backgroundDC, 0, 0, SRCCOPY);
 
 		

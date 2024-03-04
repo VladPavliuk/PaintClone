@@ -80,7 +80,7 @@ void HandleUiElements(WindowData* windowData)
 			int4 rectToErase = { centerEraserPosition.x, centerEraserPosition.y,
 				centerEraserPosition.x + windowData->eraserBoxSize, centerEraserPosition.y + windowData->eraserBoxSize };
 
-			rectToErase = ClipRect(rectToErase, windowData->drawingBitmapSize);
+			rectToErase = ClipRect(rectToErase, windowData->canvasBitmap.size);
 
 			for (int i = rectToErase.y; i < rectToErase.w; i++)
 			{
@@ -88,7 +88,7 @@ void HandleUiElements(WindowData* windowData)
 				{
 					int2 pixelToErase = { j, i };
 
-					DrawPixel(windowData->drawingBitmap, windowData->drawingBitmapSize, pixelToErase, { 255, 255, 255 });
+					DrawPixel(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, pixelToErase, { 255, 255, 255 });
 				}
 			}
 			break;
@@ -192,7 +192,7 @@ void HandleUiElements(WindowData* windowData)
 			int2 fromPixelToErase = ConvertFromScreenToDrawingCoords(windowData, windowData->initClickOnCanvasPosition);
 			int2 toPixelToErase = ConvertFromScreenToDrawingCoords(windowData, windowData->mousePosition);
 
-			DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize,
+			DrawLine(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size,
 				drawingRect, fromPixelToErase, toPixelToErase, windowData->selectedColor);
 
 			windowData->initClickOnCanvasPosition = { -1,-1 };
@@ -204,22 +204,22 @@ void HandleUiElements(WindowData* windowData)
 	case UI_ELEMENT::CANVAS_CORNER_RESIZE:
 	{
 		// recalculate new drawing bitmap size
-		int2 previousBitmapSize = windowData->drawingBitmapSize;
-		windowData->drawingBitmapSize = windowData->drawingZoneCornerResize.xy() - windowData->drawingZone.xy();
+		int2 previousBitmapSize = windowData->canvasBitmap.size;
+		windowData->canvasBitmap.size = windowData->drawingZoneCornerResize.xy() - windowData->drawingZone.xy();
 
 		CalculateDrawingZoneSize(windowData);
 
 		// reallocate drawing bitmap for new drawing size
-		ubyte4* previousBitmap = windowData->drawingBitmap;
+		ubyte4* previousBitmap = windowData->canvasBitmap.pixels;
 
-		windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->drawingBitmapSize.x;
-		windowData->drawingBitmapInfo.bmiHeader.biHeight = windowData->drawingBitmapSize.y;
+		windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->canvasBitmap.size.x;
+		windowData->drawingBitmapInfo.bmiHeader.biHeight = windowData->canvasBitmap.size.y;
 
-		windowData->drawingBitmap = (ubyte4*)malloc(4 * windowData->drawingBitmapSize.x * windowData->drawingBitmapSize.y);
-		FillBitmapWithWhite(windowData->drawingBitmap, windowData->drawingBitmapSize);
+		windowData->canvasBitmap.pixels = (ubyte4*)malloc(4 * windowData->canvasBitmap.size.x * windowData->canvasBitmap.size.y);
+		FillBitmapWithWhite(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size);
 
 		CopyBitmapToBitmap(previousBitmap, previousBitmapSize,
-			windowData->drawingBitmap, { 0,0 }, windowData->drawingBitmapSize);
+			windowData->canvasBitmap.pixels, { 0, 0 }, windowData->canvasBitmap.size);
 
 		free(previousBitmap);
 
@@ -241,13 +241,13 @@ void HandleUiElements(WindowData* windowData)
 
 		int2 canvasCornerPosition = windowData->mousePosition - windowData->activeUiOffset;
 
-		canvasCornerPosition = ClipPoint(canvasCornerPosition, int4(windowData->drawingZone.xy() + 10, windowData->windowClientSize - 10));
+		canvasCornerPosition = ClipPoint(canvasCornerPosition, int4(windowData->drawingZone.xy() + 10, windowData->windowBitmap.size - 10));
 
 		windowData->drawingZoneCornerResize.xy(canvasCornerPosition);
 		windowData->drawingZoneCornerResize.zw(canvasCornerPosition + 10);
 
 		// Draw a border rectangle, to better show how current canvas will look after resize
-		DrawBorderRect(windowData, windowData->drawingZone.xy(),
+		DrawBorderRect(windowData->windowBitmap, windowData->drawingZone.xy(),
 			canvasCornerPosition - windowData->drawingZone.xy(), 1, { 0, 255, 0 });
 		break;
 	}
@@ -299,11 +299,11 @@ void HandleUiElements(WindowData* windowData)
 
 			if (fromPixel.x == toPixel.x && fromPixel.y == toPixel.y)
 			{
-				DrawPixel(windowData->drawingBitmap, windowData->drawingBitmapSize, toPixel, windowData->selectedColor);
+				DrawPixel(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, toPixel, windowData->selectedColor);
 			}
 			else
 			{
-				DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize, drawingRect, fromPixel, toPixel, windowData->selectedColor);
+				DrawLine(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, drawingRect, fromPixel, toPixel, windowData->selectedColor);
 			}
 		}
 		else if (windowData->selectedTool == DRAW_TOOL::ERASER)
@@ -349,7 +349,7 @@ void HandleUiElements(WindowData* windowData)
 					int2 fromPixelToErase = { mouse.x + i, mouse.y + j };
 					int2 toPixelToErase = { prevMouse.x + i, prevMouse.y + j };
 
-					DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize,
+					DrawLine(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size,
 						drawingRect, fromPixelToErase, toPixelToErase, { 255, 255, 255 });
 				}
 			}
@@ -388,7 +388,7 @@ void HandleUiElements(WindowData* windowData)
 			int2 fromPixelToErase = windowData->initClickOnCanvasPosition;
 			int2 toPixelToErase = windowData->mousePosition;
 
-			DrawLine(windowData->windowBitmap, windowData->windowClientSize,
+			DrawLine(windowData->windowBitmap.pixels, windowData->windowBitmap.size,
 				windowData->drawingZone, fromPixelToErase, toPixelToErase, windowData->selectedColor);
 		}
 		break;
@@ -585,12 +585,12 @@ void HandleUiElements(WindowData* windowData)
 			eraserRect = ClipRect(eraserRect, windowData->drawingZone);
 			int2 eraserRectSize = eraserRect.size();
 
-			DrawRect(windowData,
+			DrawRect(windowData->windowBitmap,
 				eraserRect.xy(),
 				eraserRectSize,
 				{ 255,255,255 });
 
-			DrawBorderRect(windowData,
+			DrawBorderRect(windowData->windowBitmap,
 				eraserRect.xy(),
 				eraserRectSize,
 				1, { 0,0,0 });
@@ -604,7 +604,7 @@ void HandleUiElements(WindowData* windowData)
 
 void DrawDrawingCanvas(WindowData* windowData)
 {
-	DrawBorderRect(windowData, { windowData->drawingZone.x, windowData->drawingZone.y },
+	DrawBorderRect(windowData->windowBitmap, { windowData->drawingZone.x, windowData->drawingZone.y },
 		windowData->drawingZone.size(), 2, { 255, 0, 0 });
 	DrawScrollsForDrawingZone(windowData);
 
@@ -622,7 +622,7 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 
 	// vertical bar
 	float drawingZoneToImageHeightRatio = (float)windowData->drawingZone.size().y
-		/ ((float)windowData->drawingBitmapSize.y * (float)windowData->drawingZoomLevel);
+		/ ((float)windowData->canvasBitmap.size.y * (float)windowData->drawingZoomLevel);
 
 	if (drawingZoneToImageHeightRatio < 1.0f)
 	{
@@ -636,7 +636,7 @@ void DrawScrollsForDrawingZone(WindowData* windowData)
 	}
 
 	// horizontal bar
-	float drawingZoneToImageWidthRatio = (float)windowData->drawingZone.size().x / ((float)windowData->drawingBitmapSize.x * (float)windowData->drawingZoomLevel);
+	float drawingZoneToImageWidthRatio = (float)windowData->drawingZone.size().x / ((float)windowData->canvasBitmap.size.x * (float)windowData->drawingZoomLevel);
 
 	if (drawingZoneToImageWidthRatio < 1.0f)
 	{
@@ -676,7 +676,7 @@ void DrawBitmapButton(WindowData* windowData,
 	//TODO: add some kind of image stretching because we might want to have buttons that dont have the same size as a bitmap
 	DrawBitmap(windowData, bitmap, bottomLeft, size);
 
-	DrawBorderRect(windowData, bottomLeft, size, 1, { 0,0,0 });
+	DrawBorderRect(windowData->windowBitmap, bottomLeft, size, 1, { 0,0,0 });
 }
 
 void DrawButton(WindowData* windowData,
@@ -688,14 +688,14 @@ void DrawButton(WindowData* windowData,
 
 	if (windowData->activeUi == uiElement || (windowData->hotUi == uiElement && windowData->activeUi == UI_ELEMENT::NONE))
 	{
-		DrawRect(windowData, bottomLeft, size, hoveredBgColor);
+		DrawRect(windowData->windowBitmap, bottomLeft, size, hoveredBgColor);
 	}
 	else
 	{
-		DrawRect(windowData, bottomLeft, size, bgColor);
+		DrawRect(windowData->windowBitmap, bottomLeft, size, bgColor);
 	}
 
-	DrawBorderRect(windowData, bottomLeft, size, 1, { 0,0,0 });
+	DrawBorderRect(windowData->windowBitmap, bottomLeft, size, 1, { 0,0,0 });
 }
 
 void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>* brushColors, int2 bottomLeft,
@@ -711,7 +711,7 @@ void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>*
 
 		if (brushColor.color == windowData->selectedColor)
 		{
-			DrawBorderRect(windowData,
+			DrawBorderRect(windowData->windowBitmap,
 				{ bottomLeft.x + (singleColorTileSize.x * i) + (xDistanceToNextColor * i) - 1, bottomLeft.y - 1 },
 				{ singleColorTileSize.x + 1, singleColorTileSize.y + 1 }, 2, { 0,0,0 });
 		}
@@ -732,7 +732,7 @@ void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
 
 		if (tool.tool == windowData->selectedTool)
 		{
-			DrawBorderRect(windowData, { bottomLeft.x - 1, bottomLeft.y + (i * singleToolTileSize.y) + (i * yDistanceToNextToolTile) - 1 },
+			DrawBorderRect(windowData->windowBitmap, { bottomLeft.x - 1, bottomLeft.y + (i * singleToolTileSize.y) + (i * yDistanceToNextToolTile) - 1 },
 				{ tool.image.size.x + 1, tool.image.size.y + 1 }, 2, { 0,0,0 });
 		}
 	}
@@ -742,12 +742,12 @@ void DrawCanvasSizeLabel(WindowData* windowData)
 {
 	WideString lable = WideString(L"");
 
-	lable.append(windowData->drawingBitmapSize.x);
+	lable.append(windowData->canvasBitmap.size.x);
 	lable.append(L" x ");
-	lable.append(windowData->drawingBitmapSize.y);
+	lable.append(windowData->canvasBitmap.size.y);
 	lable.append(L" px");
 
-	DrawTextLine(&lable, windowData->canvasSizeLabelBox.xy(), &windowData->fontData, windowData->windowBitmap, windowData->windowClientSize);
+	DrawTextLine(&lable, windowData->canvasSizeLabelBox.xy(), &windowData->fontData, windowData->windowBitmap.pixels, windowData->windowBitmap.size);
 
 	lable.freeMemory();
 }
@@ -762,7 +762,7 @@ void DrawMouseCanvasPositionLabel(WindowData* windowData)
 	lable.append(mouseCanvasPosition.y);
 	lable.append(L" px");
 
-	DrawTextLine(&lable, windowData->mouseCanvasPositionLabelBox.xy(), &windowData->fontData, windowData->windowBitmap, windowData->windowClientSize);
+	DrawTextLine(&lable, windowData->mouseCanvasPositionLabelBox.xy(), &windowData->fontData, windowData->windowBitmap.pixels, windowData->windowBitmap.size);
 
 	lable.freeMemory();
 }
@@ -785,7 +785,7 @@ void DrawTextBlock(WindowData* windowData)
 
 	CheckHotActiveForUiElement(windowData, windowData->textBlockOnClient, UI_ELEMENT::TEXT_BLOCK);
 
-	DrawBorderRect(windowData,
+	DrawBorderRect(windowData->windowBitmap,
 		windowData->textBlockOnClient.xy(),
 		windowData->textBlockOnClient.size(), 1, { 0, 255, 0 });
 
@@ -828,14 +828,14 @@ void DrawTextBlock(WindowData* windowData)
 
 				if (isSymbolInSelection)
 				{
-					DrawRect(windowData, { lineLeftOffset, lineTopOffset },
+					DrawRect(windowData->windowBitmap, { lineLeftOffset, lineTopOffset },
 						{ rasterizedGlyph.advanceWidth, windowData->fontData.lineHeight }, { 0,0,0 });
 				}
 
 				if (rasterizedGlyph.hasBitmap)
 				{
 					CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
-						windowData->windowBitmap, position, windowData->windowClientSize,
+						windowData->windowBitmap.pixels, position, windowData->windowBitmap.size,
 						(int)scale, isSymbolInSelection);
 				}
 			}
@@ -850,13 +850,13 @@ void DrawTextBlock(WindowData* windowData)
 					newLineSymbolSelectionWidth = textBlockLeftSide - lineLeftOffset;
 				}
 
-				DrawRect(windowData, { lineLeftOffset, lineTopOffset },
+				DrawRect(windowData->windowBitmap, { lineLeftOffset, lineTopOffset },
 					{ newLineSymbolSelectionWidth, windowData->fontData.lineHeight }, { 0, 0, 0 });
 			}
 
 			if (charIndex == windowData->cursorPosition)
 			{
-				DrawRect(windowData, { lineLeftOffset, lineTopOffset },
+				DrawRect(windowData->windowBitmap, { lineLeftOffset, lineTopOffset },
 					{ 1, (int)((float)windowData->fontData.lineHeight * scale) }, { 0,0,0 });
 			}
 		}
