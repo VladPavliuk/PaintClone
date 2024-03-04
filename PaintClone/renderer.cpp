@@ -648,9 +648,10 @@ void RecreateGlyphsLayout(WindowData* windowData, WideString text, int lineMaxWi
 
 	windowData->glyphsLayout = SimpleDynamicArray<SimpleDynamicArray<int2>>::allocate(1);
 	windowData->glyphsLayout->add(SimpleDynamicArray<int2>(1));
-
-	int textBlockHeight = windowData->textBlockOnClient.size().y;
-	int lineHeight = windowData->fontData.lineHeight;
+	
+	int scale = windowData->drawingZoomLevel;
+	int textBlockHeight = windowData->textBlockOnClient.size().y * scale;
+	int lineHeight = windowData->fontData.lineHeight * scale;
 
 	int currentLineWidth = 0; // in pixels
 	int lineIndex = 0;
@@ -671,7 +672,7 @@ void RecreateGlyphsLayout(WindowData* windowData, WideString text, int lineMaxWi
 
 		windowData->glyphsLayout->getPointer(lineIndex)->add({ currentLineWidth, i });
 
-		currentLineWidth += glyph.advanceWidth;
+		currentLineWidth += glyph.advanceWidth * scale;
 
 		bool hasNextSymbol = i < text.length - 1;
 
@@ -679,7 +680,7 @@ void RecreateGlyphsLayout(WindowData* windowData, WideString text, int lineMaxWi
 		{
 			RasterizedGlyph nextGlyph = windowData->fontData.glyphs.get(text.chars[i + 1]);
 
-			if (nextGlyph.advanceWidth + currentLineWidth > lineMaxWidth)
+			if (nextGlyph.advanceWidth * scale + currentLineWidth > lineMaxWidth)
 			{
 				_moveToNextLine(windowData, lineHeight, textBlockHeight,
 					&currentLineWidth, &lineIndex);

@@ -17,7 +17,8 @@ enum class DRAW_TOOL
 	FILL,
 	ZOOM,
 	TEXT,
-	ERASER
+	ERASER,
+	LINE
 };
 
 enum class UI_ELEMENT
@@ -45,6 +46,7 @@ enum class UI_ELEMENT
 	ZOOM_TOOL,
 	TEXT_TOOL,
 	ERASER_TOOL,
+	LINE_TOOL,
 
 	COLOR_BRUCH_1,
 	COLOR_BRUCH_2,
@@ -142,6 +144,7 @@ struct WindowData
 	ubyte3 selectedColor;
 	SimpleDynamicArray<BrushColorTile> brushColorTiles;
 
+	int2 initClickOnCanvasPosition;
 	int eraserBoxSize;
 
 	LARGE_INTEGER perfomanceCounterFreq;

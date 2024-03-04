@@ -47,7 +47,7 @@ void HandleUiElements(WindowData* windowData)
 			int defaultTextBlockWidth = 100 * windowData->drawingZoomLevel;
 			int defaultTextBlockHeight = defaultLinesPerBlock * windowData->fontData.lineHeight * windowData->drawingZoomLevel;
 
-			int4 textBlockRect = int4(windowData->mousePosition, 
+			int4 textBlockRect = int4(windowData->mousePosition,
 				{ windowData->mousePosition.x + defaultTextBlockWidth, windowData->mousePosition.y + defaultTextBlockHeight });
 
 			textBlockRect = ClipRect(textBlockRect, int4(windowData->drawingZone.xy() + windowData->textBlockButtonsSize,
@@ -128,6 +128,11 @@ void HandleUiElements(WindowData* windowData)
 		windowData->selectedTool = DRAW_TOOL::ERASER;
 		break;
 	}
+	case UI_ELEMENT::LINE_TOOL:
+	{
+		windowData->selectedTool = DRAW_TOOL::LINE;
+		break;
+	}
 	case UI_ELEMENT::COLOR_BRUCH_1:
 	case UI_ELEMENT::COLOR_BRUCH_2:
 	case UI_ELEMENT::COLOR_BRUCH_3:
@@ -159,6 +164,41 @@ void HandleUiElements(WindowData* windowData)
 	{
 	case UI_ELEMENT::NONE:
 	{
+		break;
+	}
+	case UI_ELEMENT::DRAWING_CANVAS:
+	{
+		switch (windowData->selectedTool)
+		{
+		case DRAW_TOOL::LINE:
+		{
+			int4 drawingRect;
+
+			drawingRect.x = 0;
+			drawingRect.y = 0;
+			drawingRect.z = windowData->drawingZone.size().x;
+			drawingRect.w = windowData->drawingZone.size().y;
+
+			drawingRect.x += windowData->drawingOffset.x;
+			drawingRect.y += windowData->drawingOffset.y;
+			drawingRect.z += windowData->drawingOffset.x;
+			drawingRect.w += windowData->drawingOffset.y;
+
+			drawingRect.x = (int)((float)drawingRect.x / (float)windowData->drawingZoomLevel);
+			drawingRect.y = (int)((float)drawingRect.y / (float)windowData->drawingZoomLevel);
+			drawingRect.z = (int)((float)drawingRect.z / (float)windowData->drawingZoomLevel);
+			drawingRect.w = (int)((float)drawingRect.w / (float)windowData->drawingZoomLevel);
+
+			int2 fromPixelToErase = ConvertFromScreenToDrawingCoords(windowData, windowData->initClickOnCanvasPosition);
+			int2 toPixelToErase = ConvertFromScreenToDrawingCoords(windowData, windowData->mousePosition);
+
+			DrawLine(windowData->drawingBitmap, windowData->drawingBitmapSize,
+				drawingRect, fromPixelToErase, toPixelToErase, windowData->selectedColor);
+
+			windowData->initClickOnCanvasPosition = { -1,-1 };
+			break;
+		}
+		}
 		break;
 	}
 	case UI_ELEMENT::CANVAS_CORNER_RESIZE:
@@ -338,7 +378,19 @@ void HandleUiElements(WindowData* windowData)
 				}
 			}*/
 		}
+		else if (windowData->selectedTool == DRAW_TOOL::LINE)
+		{
+			if (windowData->wasRightButtonPressed)
+			{
+				windowData->initClickOnCanvasPosition = windowData->mousePosition;
+			}
 
+			int2 fromPixelToErase = windowData->initClickOnCanvasPosition;
+			int2 toPixelToErase = windowData->mousePosition;
+
+			DrawLine(windowData->windowBitmap, windowData->windowClientSize,
+				windowData->drawingZone, fromPixelToErase, toPixelToErase, windowData->selectedColor);
+		}
 		break;
 	}
 	case UI_ELEMENT::TEXT_BLOCK:
@@ -700,11 +752,13 @@ void DrawTextBlock(WindowData* windowData)
 		return;
 	}
 
+	float scale = windowData->drawingZoomLevel;
+
 	CheckHotActiveForUiElement(windowData, windowData->textBlockOnClient, UI_ELEMENT::TEXT_BLOCK);
 
 	DrawBorderRect(windowData,
 		windowData->textBlockOnClient.xy(),
-		windowData->textBlockOnClient.size(), 1, { 0,255,0 });
+		windowData->textBlockOnClient.size(), 1, { 0, 255, 0 });
 
 	int2 textSelectionRange = { -1, -1 };
 	if (windowData->selectedTextStartIndex != -1)
@@ -713,7 +767,7 @@ void DrawTextBlock(WindowData* windowData)
 	}
 
 	// render text
-	int textBlockleftSide = windowData->textBlockOnClient.z;
+	int textBlockLeftSide = windowData->textBlockOnClient.z;
 	int maxLinesInTextBlock = windowData->textBlockOnClient.size().y / windowData->fontData.lineHeight;
 	int topLineIndex = windowData->topLineIndexToShow;
 	for (int layoutLineIndex = topLineIndex, lineIndex = 0; layoutLineIndex < windowData->glyphsLayout->length; layoutLineIndex++, lineIndex++)
@@ -724,7 +778,7 @@ void DrawTextBlock(WindowData* windowData)
 		}
 
 		auto line = windowData->glyphsLayout->get(layoutLineIndex);
-		int lineTopOffset = windowData->textBlockOnClient.w - (lineIndex + 1) * windowData->fontData.lineHeight;
+		int lineTopOffset = windowData->textBlockOnClient.w - (lineIndex + 1) * windowData->fontData.lineHeight * scale;
 		for (int j = 0; j < line.length; j++)
 		{
 			int2 glyphData = line.get(j);
@@ -740,8 +794,8 @@ void DrawTextBlock(WindowData* windowData)
 			{
 				RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
 				int2 position = {
-					lineLeftOffset + rasterizedGlyph.leftSideBearings * windowData->drawingZoomLevel,
-					lineTopOffset + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * windowData->drawingZoomLevel };
+					lineLeftOffset + rasterizedGlyph.leftSideBearings * scale,
+					lineTopOffset + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * scale };
 
 				if (isSymbolInSelection)
 				{
@@ -754,7 +808,7 @@ void DrawTextBlock(WindowData* windowData)
 				{
 					CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
 						windowData->windowBitmap, position, windowData->windowClientSize,
-						windowData->drawingZoomLevel, isSymbolInSelection);
+						scale, isSymbolInSelection);
 				}
 			}
 
@@ -763,9 +817,9 @@ void DrawTextBlock(WindowData* windowData)
 			{
 				int newLineSymbolSelectionWidth = 20;
 
-				if (lineLeftOffset + newLineSymbolSelectionWidth > textBlockleftSide)
+				if (lineLeftOffset + newLineSymbolSelectionWidth > textBlockLeftSide)
 				{
-					newLineSymbolSelectionWidth = textBlockleftSide - lineLeftOffset;
+					newLineSymbolSelectionWidth = textBlockLeftSide - lineLeftOffset;
 				}
 
 				DrawRect(windowData, lineLeftOffset, lineTopOffset,
@@ -775,7 +829,7 @@ void DrawTextBlock(WindowData* windowData)
 
 			if (charIndex == windowData->cursorPosition)
 			{
-				DrawRect(windowData, lineLeftOffset, lineTopOffset, 1, windowData->fontData.lineHeight, { 0,0,0 });
+				DrawRect(windowData, lineLeftOffset, lineTopOffset, 1, windowData->fontData.lineHeight * scale, { 0,0,0 });
 			}
 		}
 	}
