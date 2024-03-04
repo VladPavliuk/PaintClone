@@ -79,6 +79,8 @@ struct ToolTile
 	BmpImage image;
 };
 
+
+
 struct WindowData
 {
 	HDC windowDC;
@@ -108,6 +110,7 @@ struct WindowData
 
 	int2 prevMousePosition;
 	int2 mousePosition;
+	int2 lastMouseCanvasPosition;
 	bool mousePositionChanged;
 
 	bool isRightButtonHold;
@@ -146,6 +149,9 @@ struct WindowData
 
 	int2 initClickOnCanvasPosition;
 	int eraserBoxSize;
+
+	int4 canvasSizeLabelBox;
+	int4 mouseCanvasPositionLabelBox;
 
 	LARGE_INTEGER perfomanceCounterFreq;
 };

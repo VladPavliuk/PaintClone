@@ -46,7 +46,7 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 	}
 	glyphs.freeMemory();*/
 
-	int verticalSize = 50;
+	int verticalSize = 30;
 	double timeDelta2 = GetCurrentTimestamp(windowData);
 	//windowData->fontData.maxBoundaries = verticalSize;
 
@@ -114,77 +114,6 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->isRightButtonHold = true;
 		windowData->wasRightButtonPressed = true;
 
-		//if (windowData->isTextEnteringMode)
-		//{
-		//	if (IsInRect(windowData->textBlockOnClient, windowData->mousePosition))
-		//	{
-		//		if (GetKeyState(VK_SHIFT) & 0x8000)
-		//		{
-		//			if (windowData->selectedTextStartIndex == -1)
-		//				windowData->selectedTextStartIndex = windowData->cursorPosition;
-		//		}
-		//		else
-		//		{
-		//			windowData->selectedTextStartIndex = -1;
-		//		}
-
-		//		int textBlockHeight = windowData->textBlockOnClient.size().y;
-		//		int visibleLinesCount = textBlockHeight / windowData->fontData.lineHeight;
-		//		int lineIndex = (windowData->textBlockOnClient.w - windowData->mousePosition.y) / windowData->fontData.lineHeight;
-
-		//		lineIndex += windowData->topLineIndexToShow;
-		//		int mouseLeftOffset = windowData->mousePosition.x - windowData->textBlockOnClient.x;
-
-		//		if (lineIndex >= windowData->glyphsLayout->length)
-		//		{
-		//			int lastLindeIndex = windowData->glyphsLayout->length - 1;
-		//			auto lastLine = windowData->glyphsLayout->get(lastLindeIndex);
-		//			int2 symbol = lastLine.get(lastLine.length - 1);
-		//			windowData->cursorPosition = symbol.y;
-		//		}
-		//		else
-		//		{
-		//			auto line = windowData->glyphsLayout->get(lineIndex);
-
-		//			for (int i = 0; i < line.length; i++)
-		//			{
-		//				int2 symbol = line.get(i);
-
-		//				if (mouseLeftOffset < symbol.x)
-		//				{
-		//					bool hasPrevSymbol = i > 0;
-		//					if (hasPrevSymbol)
-		//					{
-		//						int2 prevSymbol = line.get(i - 1);
-
-		//						if ((symbol.x - mouseLeftOffset) < (mouseLeftOffset - prevSymbol.x))
-		//						{
-		//							windowData->cursorPosition = symbol.y;
-		//						}
-		//					}
-		//					break;
-		//				}
-
-		//				windowData->cursorPosition = symbol.y;
-		//			}
-		//		}
-		//	}
-		//	else
-		//	{
-		//		// exit text entering mode
-		//		if (windowData->textBuffer.length > 0)
-		//		{
-		//			//CopyTextBufferToCanvas(windowData);
-		//		}
-
-		//		windowData->isTextEnteringMode = false;
-		//		windowData->textBlockOnClient = { -1,-1,-1,-1 };
-		//		windowData->cursorPosition = -1;
-		//		windowData->topLineIndexToShow = 0;
-		//		windowData->selectedTextStartIndex = -1;
-		//		windowData->textBuffer.clear();
-		//	}
-		//}
 		SetCapture(hwnd);
 		break;
 	}
@@ -549,6 +478,11 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		windowData->mousePosition = { xMouse, yMouse };
 		windowData->mousePositionChanged = true;
 
+		if (IsInRect(windowData->drawingZone, windowData->mousePosition))
+		{
+			windowData->lastMouseCanvasPosition = windowData->mousePosition;
+		}
+
 		/*if (windowData->isRightButtonHold
 			&& windowData->isTextEnteringMode
 			&& IsInRect(windowData->textBlockOnClient, windowData->mousePosition))
@@ -599,12 +533,17 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 }
 
 // TODO:
+// create color picker
+// optimaze glyphs layout storing
+// use better fill algorithm
+// add do/undo buttons
+// add bmp image storing/loading
 // 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, int windowMode)
 {
 	/*WideString test = WideString(L"YEAH");
 
-	test.insert(4, L"_1");*/
+	test.append(-12345980);*/
 
 	WNDCLASS windowClass = {};
 	windowClass.hInstance = hInstance;
@@ -715,6 +654,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 		DrawTextBlock(&windowData);
 		DrawTextBlockResizeButtons(&windowData);
+		
+		DrawCanvasSizeLabel(&windowData);
+		DrawMouseCanvasPositionLabel(&windowData);
 
 		HandleUiElements(&windowData);
 

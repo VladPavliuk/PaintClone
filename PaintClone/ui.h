@@ -2,14 +2,7 @@
 
 #include "renderer.h"
 #include "math.h"
-
-//void DrawRectToZAndIdBuffer(WindowData* windowData,
-//	int2 bottomLeft,
-//	int2 size,
-//	ubyte zIndex,
-//	ubyte uiId);
-
-//ubyte2 GetZAndIdFromBuffer(WindowData* windowData, int2 position);
+#include "text.h"
 
 void HandleUiElements(WindowData* windowData);
 
@@ -44,6 +37,11 @@ void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>*
 
 void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
 	int2 singleToolTileSize, int yDistanceToNextToolTile);
+
+void DrawCanvasSizeLabel(WindowData* windowData);
+
+void DrawMouseCanvasPositionLabel(WindowData* windowData);
+
 void DrawDraggableCornerOfDrawingZone(WindowData* windowData);
 
 void DrawTextBlock(WindowData* windowData);

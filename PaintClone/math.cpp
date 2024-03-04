@@ -26,6 +26,11 @@ int GenerateBezierCurve(int2 p0, int2 p1, int2 p2, int pointsToInterpolate, Simp
 	return pointsAdded;
 }
 
+int absInt(int a)
+{
+	return a >= 0 ? a : -a;
+}
+
 int maxInt(int a, int b)
 {
 	return a > b ? a : b;

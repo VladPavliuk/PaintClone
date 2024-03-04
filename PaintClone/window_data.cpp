@@ -28,6 +28,8 @@ void InitWindowData(WindowData* windowData)
 	windowData->drawingZoomLevel = 1;
 	windowData->drawingOffset = { 0, 0 };
 
+	windowData->lastMouseCanvasPosition = {0,0};
+
 	windowData->isRightButtonHold = false;
 	windowData->wasRightButtonPressed = false;
 	windowData->wasRightButtonPressed = false;
@@ -54,4 +56,7 @@ void InitWindowData(WindowData* windowData)
 
 	windowData->initClickOnCanvasPosition = { -1, -1 };
 	windowData->eraserBoxSize = 50;
+
+	windowData->canvasSizeLabelBox = { 200, 0, 350, 30 };
+	windowData->mouseCanvasPositionLabelBox = { 500, 0, 350, 30 };
 }

@@ -67,6 +67,32 @@ struct WideString
 		initEmptyString();
 	}
 
+	void append(int number)
+	{
+		bool isNegative = number < 0;
+
+		if (isNegative) number = absInt(number);
+
+		WideString numberString = WideString(L"");
+		do
+		{
+			int digit = number % 10;
+			wchar_t digitString = wchar_t(48 + digit); // 48 is 0 char in ascii table
+
+			numberString.append(digitString);
+			number /= 10;
+		} while (number != 0);
+
+		if (isNegative) append(L'-');
+
+		for (int i = numberString.length - 1; i >= 0; i--)
+		{
+			append(numberString.chars[i]);
+		}
+
+		numberString.freeMemory();
+	}
+
 	void append(wchar_t charToAppend)
 	{
 		if (chars == NULL)
@@ -138,14 +164,14 @@ struct WideString
 		int newLength = length + stringToInsertLength;
 
 		wchar_t* newChars = (wchar_t*)malloc((newLength + 1) * sizeof(wchar_t));
-		
+
 		if (index > 0)
 		{
 			memcpy(newChars, chars, index * sizeof(wchar_t));
 		}
 
 		memcpy(newChars + index, stringToInsert, stringToInsertLength * sizeof(wchar_t));
-		
+
 		memcpy(newChars + index + stringToInsertLength, chars + index, (length - index) * sizeof(wchar_t));
 
 		length = newLength;

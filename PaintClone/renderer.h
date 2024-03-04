@@ -19,7 +19,7 @@ void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color);
 
 void CopyTextBufferToCanvas(WindowData* windowData);
 
-void DrawRect(WindowData* windowData, int x, int y, int width, int height, ubyte3 color);
+void DrawRect(WindowData* windowData, int2 bottomLeft, int2 size, ubyte3 color);
 void DrawBorderRect(WindowData* windowData, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color);
 
 int4 ClipRect(int4 rectSource, int4 rectDest);
@@ -36,13 +36,3 @@ void CopyBitmapToBitmap(ubyte4* sourceBitmap, int2 sourceBitmapSize,
 
 void CopyMonochromicBitmapToBitmap(ubyte* sourceBitmap, int2 sourceBitmapSize,
 	ubyte4* destBitmap, int2 destXY, int2 destBitmapSize, int zoom = 1, bool invertColor = false);
-
-void UpdateTextSelectionifShiftPressed(WindowData* windowData);
-int GetCursorPositionByMousePosition(WindowData* windowData);
-void UpdateTextBlockTopLine(WindowData* windowData);
-void MoveCursorToNewLine(WindowData* windowData, int newLineIndex, int oldCursorLeftOffset);
-int2 GetCursorLayoutPotision(WindowData* windowData);
-
-int2 GetSelectedTextRange(WindowData* windowData);
-
-void RecreateGlyphsLayout(WindowData* windowData, WideString text, int lineMaxWidth);

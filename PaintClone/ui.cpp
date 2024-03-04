@@ -75,7 +75,7 @@ void HandleUiElements(WindowData* windowData)
 			int2 centerEraserPosition = windowData->mousePosition;
 			centerEraserPosition = ConvertFromScreenToDrawingCoords(windowData, centerEraserPosition);
 
-			centerEraserPosition -= windowData->eraserBoxSize / 2.0f;
+			centerEraserPosition -= (int)((float)windowData->eraserBoxSize / 2.0f);
 
 			int4 rectToErase = { centerEraserPosition.x, centerEraserPosition.y,
 				centerEraserPosition.x + windowData->eraserBoxSize, centerEraserPosition.y + windowData->eraserBoxSize };
@@ -336,11 +336,11 @@ void HandleUiElements(WindowData* windowData)
 			mouse = ConvertFromScreenToDrawingCoords(windowData, mouse);
 			prevMouse = ConvertFromScreenToDrawingCoords(windowData, prevMouse);
 
-			mouse.x -= windowData->eraserBoxSize / 2.0f;
-			mouse.y -= windowData->eraserBoxSize / 2.0f;
+			mouse.x -= (int)((float)windowData->eraserBoxSize / 2.0f);
+			mouse.y -= (int)((float)windowData->eraserBoxSize / 2.0f);
 
-			prevMouse.x -= windowData->eraserBoxSize / 2.0f;
-			prevMouse.y -= windowData->eraserBoxSize / 2.0f;
+			prevMouse.x -= (int)((float)windowData->eraserBoxSize / 2.0f);
+			prevMouse.y -= (int)((float)windowData->eraserBoxSize / 2.0f);
 			// square eraser
 			for (int i = 0; i < windowData->eraserBoxSize; i++)
 			{
@@ -586,8 +586,8 @@ void HandleUiElements(WindowData* windowData)
 			int2 eraserRectSize = eraserRect.size();
 
 			DrawRect(windowData,
-				eraserRect.x, eraserRect.y,
-				eraserRectSize.x, eraserRectSize.y,
+				eraserRect.xy(),
+				eraserRectSize,
 				{ 255,255,255 });
 
 			DrawBorderRect(windowData,
@@ -688,11 +688,11 @@ void DrawButton(WindowData* windowData,
 
 	if (windowData->activeUi == uiElement || (windowData->hotUi == uiElement && windowData->activeUi == UI_ELEMENT::NONE))
 	{
-		DrawRect(windowData, bottomLeft.x, bottomLeft.y, size.x, size.y, hoveredBgColor);
+		DrawRect(windowData, bottomLeft, size, hoveredBgColor);
 	}
 	else
 	{
-		DrawRect(windowData, bottomLeft.x, bottomLeft.y, size.x, size.y, bgColor);
+		DrawRect(windowData, bottomLeft, size, bgColor);
 	}
 
 	DrawBorderRect(windowData, bottomLeft, size, 1, { 0,0,0 });
@@ -738,6 +738,35 @@ void DrawToolsPanel(WindowData* windowData, int2 bottomLeft,
 	}
 }
 
+void DrawCanvasSizeLabel(WindowData* windowData)
+{
+	WideString lable = WideString(L"");
+
+	lable.append(windowData->drawingBitmapSize.x);
+	lable.append(L" x ");
+	lable.append(windowData->drawingBitmapSize.y);
+	lable.append(L" px");
+
+	DrawTextLine(&lable, windowData->canvasSizeLabelBox.xy(), &windowData->fontData, windowData->windowBitmap, windowData->windowClientSize);
+
+	lable.freeMemory();
+}
+
+void DrawMouseCanvasPositionLabel(WindowData* windowData)
+{
+	WideString lable = WideString(L"");
+	int2 mouseCanvasPosition = ConvertFromScreenToDrawingCoords(windowData, windowData->lastMouseCanvasPosition);
+
+	lable.append(mouseCanvasPosition.x);
+	lable.append(L" x ");
+	lable.append(mouseCanvasPosition.y);
+	lable.append(L" px");
+
+	DrawTextLine(&lable, windowData->mouseCanvasPositionLabelBox.xy(), &windowData->fontData, windowData->windowBitmap, windowData->windowClientSize);
+
+	lable.freeMemory();
+}
+
 void DrawDraggableCornerOfDrawingZone(WindowData* windowData)
 {
 	DrawButton(windowData,
@@ -752,7 +781,7 @@ void DrawTextBlock(WindowData* windowData)
 		return;
 	}
 
-	float scale = windowData->drawingZoomLevel;
+	float scale = (float)windowData->drawingZoomLevel;
 
 	CheckHotActiveForUiElement(windowData, windowData->textBlockOnClient, UI_ELEMENT::TEXT_BLOCK);
 
@@ -778,7 +807,7 @@ void DrawTextBlock(WindowData* windowData)
 		}
 
 		auto line = windowData->glyphsLayout->get(layoutLineIndex);
-		int lineTopOffset = windowData->textBlockOnClient.w - (lineIndex + 1) * windowData->fontData.lineHeight * scale;
+		int lineTopOffset = (int)(windowData->textBlockOnClient.w - (lineIndex + 1) * windowData->fontData.lineHeight * scale);
 		for (int j = 0; j < line.length; j++)
 		{
 			int2 glyphData = line.get(j);
@@ -794,21 +823,20 @@ void DrawTextBlock(WindowData* windowData)
 			{
 				RasterizedGlyph rasterizedGlyph = windowData->fontData.glyphs.get(code);
 				int2 position = {
-					lineLeftOffset + rasterizedGlyph.leftSideBearings * scale,
-					lineTopOffset + (rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * scale };
+					lineLeftOffset + (int)((float)rasterizedGlyph.leftSideBearings * scale),
+					lineTopOffset + (int)((float)(rasterizedGlyph.boundaries.y + -windowData->fontData.descent) * scale) };
 
 				if (isSymbolInSelection)
 				{
-					DrawRect(windowData, lineLeftOffset, lineTopOffset,
-						rasterizedGlyph.advanceWidth,
-						windowData->fontData.lineHeight, { 0,0,0 });
+					DrawRect(windowData, { lineLeftOffset, lineTopOffset },
+						{ rasterizedGlyph.advanceWidth, windowData->fontData.lineHeight }, { 0,0,0 });
 				}
 
 				if (rasterizedGlyph.hasBitmap)
 				{
 					CopyMonochromicBitmapToBitmap(rasterizedGlyph.bitmap, rasterizedGlyph.bitmapSize,
 						windowData->windowBitmap, position, windowData->windowClientSize,
-						scale, isSymbolInSelection);
+						(int)scale, isSymbolInSelection);
 				}
 			}
 
@@ -822,14 +850,14 @@ void DrawTextBlock(WindowData* windowData)
 					newLineSymbolSelectionWidth = textBlockLeftSide - lineLeftOffset;
 				}
 
-				DrawRect(windowData, lineLeftOffset, lineTopOffset,
-					newLineSymbolSelectionWidth,
-					windowData->fontData.lineHeight, { 0, 0, 0 });
+				DrawRect(windowData, { lineLeftOffset, lineTopOffset },
+					{ newLineSymbolSelectionWidth, windowData->fontData.lineHeight }, { 0, 0, 0 });
 			}
 
 			if (charIndex == windowData->cursorPosition)
 			{
-				DrawRect(windowData, lineLeftOffset, lineTopOffset, 1, windowData->fontData.lineHeight * scale, { 0,0,0 });
+				DrawRect(windowData, { lineLeftOffset, lineTopOffset },
+					{ 1, (int)((float)windowData->fontData.lineHeight * scale) }, { 0,0,0 });
 			}
 		}
 	}

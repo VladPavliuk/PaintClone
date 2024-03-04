@@ -145,6 +145,7 @@
     <ClCompile Include="math.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="fonts.cpp" />
+    <ClCompile Include="text.cpp" />
     <ClCompile Include="ui.cpp" />
     <ClCompile Include="window_data.cpp" />
   </ItemGroup>
@@ -159,6 +160,7 @@
     <ClInclude Include="renderer.h" />
     <ClInclude Include="fonts.h" />
     <ClInclude Include="string.h" />
+    <ClInclude Include="text.h" />
     <ClInclude Include="ui.h" />
     <ClInclude Include="window_data.h" />
   </ItemGroup>

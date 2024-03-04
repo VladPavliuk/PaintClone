@@ -239,8 +239,8 @@ FontDataRasterized RasterizeFontGlyphs(FontData* font, int maxSymbolPixelsHeight
 
 		RasterizedGlyph rasterizedGlyph;
 		rasterizedGlyph.code = fontGlyph.code;
-		rasterizedGlyph.leftSideBearings = scaleRatio * fontGlyph.leftSideBearings;
-		rasterizedGlyph.advanceWidth = scaleRatio * fontGlyph.advanceWidth;
+		rasterizedGlyph.leftSideBearings = (int)(scaleRatio * (float)fontGlyph.leftSideBearings);
+		rasterizedGlyph.advanceWidth = (int)(scaleRatio * (float)fontGlyph.advanceWidth);
 		rasterizedGlyph.hasBitmap = fontGlyph.hasContours;
 
 		if (!rasterizedGlyph.hasBitmap)
