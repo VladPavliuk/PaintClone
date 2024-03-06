@@ -1,5 +1,4 @@
 #include "ui.h"
-#include <cmath>
 
 void HandleUiElements(WindowData* windowData)
 {
@@ -19,7 +18,7 @@ void HandleUiElements(WindowData* windowData)
 
 			pixelToStart = ConvertFromScreenToDrawingCoords(windowData, pixelToStart);
 
-			FillFromPixel(windowData, pixelToStart, windowData->selectedColor);
+			FillFromPixel(windowData, pixelToStart, GetSelectedColor(windowData));
 			break;
 		}
 		case DRAW_TOOL::TEXT:
@@ -98,6 +97,7 @@ void HandleUiElements(WindowData* windowData)
 	}
 	case UI_ELEMENT::PENCIL_TOOL:
 	{
+
 		windowData->selectedTool = DRAW_TOOL::PENCIL;
 		break;
 	}
@@ -147,9 +147,15 @@ void HandleUiElements(WindowData* windowData)
 			BrushColorTile brushColorTile = windowData->brushColorTiles.get(i);
 			if (brushColorTile.uiElement == windowData->sumbitedUi)
 			{
-				windowData->selectedColor = brushColorTile.color;
+				windowData->selectedColorBruchTile = brushColorTile.uiElement;
 				break;
 			}
+		}
+
+		if (windowData->wasMouseDoubleClick)
+		{
+			windowData->selectedColorBrushForColorPicker = windowData->selectedColorBruchTile;
+			ShowDialogWindow(windowData, DialogWindowType::COLOR_PICKER);
 		}
 		break;
 	}
@@ -193,7 +199,7 @@ void HandleUiElements(WindowData* windowData)
 			int2 toPixelToErase = ConvertFromScreenToDrawingCoords(windowData, windowData->mousePosition);
 
 			DrawLine(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size,
-				drawingRect, fromPixelToErase, toPixelToErase, windowData->selectedColor);
+				drawingRect, fromPixelToErase, toPixelToErase, GetSelectedColor(windowData));
 
 			windowData->initClickOnCanvasPosition = { -1,-1 };
 			break;
@@ -299,11 +305,11 @@ void HandleUiElements(WindowData* windowData)
 
 			if (fromPixel.x == toPixel.x && fromPixel.y == toPixel.y)
 			{
-				DrawPixel(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, toPixel, windowData->selectedColor);
+				DrawPixel(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, toPixel, GetSelectedColor(windowData));
 			}
 			else
 			{
-				DrawLine(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, drawingRect, fromPixel, toPixel, windowData->selectedColor);
+				DrawLine(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size, drawingRect, fromPixel, toPixel, GetSelectedColor(windowData));
 			}
 		}
 		else if (windowData->selectedTool == DRAW_TOOL::ERASER)
@@ -389,7 +395,7 @@ void HandleUiElements(WindowData* windowData)
 			int2 toPixelToErase = windowData->mousePosition;
 
 			DrawLine(windowData->windowBitmap.pixels, windowData->windowBitmap.size,
-				windowData->drawingZone, fromPixelToErase, toPixelToErase, windowData->selectedColor);
+				windowData->drawingZone, fromPixelToErase, toPixelToErase, GetSelectedColor(windowData));
 		}
 		break;
 	}
@@ -698,6 +704,30 @@ void DrawButton(WindowData* windowData,
 	DrawBorderRect(windowData->windowBitmap, bottomLeft, size, 1, { 0,0,0 });
 }
 
+void DrawModalWindow(WindowData* windowData, WideString* title, int4 modalWindowBox, 
+	UI_ELEMENT modalWindowUiId)
+{
+	CheckHotActiveForUiElement(windowData, modalWindowBox, modalWindowUiId);
+
+	// background
+	DrawRect(windowData->windowBitmap, modalWindowBox.xy(), modalWindowBox.size(), { 200,200,200 });
+
+	// title background
+	DrawRect(windowData->windowBitmap, { modalWindowBox.x, modalWindowBox.w - windowData->fontData.lineHeight }, 
+		{ modalWindowBox.size().x, windowData->fontData.lineHeight }, { 255,255,255 });
+	
+	// title
+	DrawTextLine(title, 
+		{ modalWindowBox.x, modalWindowBox.w - windowData->fontData.lineHeight }, 
+		&windowData->fontData, windowData->windowBitmap);
+
+	// close button
+
+
+	// modal window border
+	DrawBorderRect(windowData->windowBitmap, modalWindowBox.xy(), modalWindowBox.size(), 1, { 0,0,0 });
+}
+
 void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>* brushColors, int2 bottomLeft,
 	int2 singleColorTileSize, int xDistanceToNextColor)
 {
@@ -709,7 +739,7 @@ void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>*
 			{ bottomLeft.x + (singleColorTileSize.x * i) + (xDistanceToNextColor * i), bottomLeft.y },
 			singleColorTileSize, brushColor.color, brushColor.color, brushColor.uiElement);
 
-		if (brushColor.color == windowData->selectedColor)
+		if (brushColor.uiElement == windowData->selectedColorBruchTile)
 		{
 			DrawBorderRect(windowData->windowBitmap,
 				{ bottomLeft.x + (singleColorTileSize.x * i) + (xDistanceToNextColor * i) - 1, bottomLeft.y - 1 },
@@ -747,7 +777,7 @@ void DrawCanvasSizeLabel(WindowData* windowData)
 	lable.append(windowData->canvasBitmap.size.y);
 	lable.append(L" px");
 
-	DrawTextLine(&lable, windowData->canvasSizeLabelBox.xy(), &windowData->fontData, windowData->windowBitmap.pixels, windowData->windowBitmap.size);
+	DrawTextLine(&lable, windowData->canvasSizeLabelBox.xy(), &windowData->fontData, windowData->windowBitmap);
 
 	lable.freeMemory();
 }
@@ -762,7 +792,7 @@ void DrawMouseCanvasPositionLabel(WindowData* windowData)
 	lable.append(mouseCanvasPosition.y);
 	lable.append(L" px");
 
-	DrawTextLine(&lable, windowData->mouseCanvasPositionLabelBox.xy(), &windowData->fontData, windowData->windowBitmap.pixels, windowData->windowBitmap.size);
+	DrawTextLine(&lable, windowData->mouseCanvasPositionLabelBox.xy(), &windowData->fontData, windowData->windowBitmap);
 
 	lable.freeMemory();
 }

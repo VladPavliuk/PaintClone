@@ -40,11 +40,6 @@ void InitRenderer(WindowData* windowData, HWND hwnd)
 	windowData->windowBitmap.size.x = clientRect.right - clientRect.left;
 	windowData->windowBitmap.size.y = clientRect.bottom - clientRect.top;
 
-	//> automatically select drawing bitmap based on initial window size
-	//windowData->drawingBitmapSize.x = windowData->windowClientSize.x - windowData->drawingZonePosition.x;
-	//windowData->drawingBitmapSize.y = windowData->windowClientSize.y - windowData->drawingZonePosition.y;
-	//<
-
 	windowData->windowBitmapInfo.bmiHeader.biSize = sizeof(windowData->windowBitmapInfo.bmiHeader);
 	windowData->windowBitmapInfo.bmiHeader.biWidth = windowData->windowBitmap.size.x;
 	windowData->windowBitmapInfo.bmiHeader.biHeight = windowData->windowBitmap.size.y;
@@ -249,47 +244,6 @@ void DrawBorderRect(Bitmap bitmap, int2 bottomLeft, int2 size, int lineWidth, ub
 
 	// right
 	DrawRect(bitmap, { bottomLeft.x + size.x - lineWidth, bottomLeft.y }, { lineWidth, size.y }, color);
-}
-
-int4 ClipRect(int4 rectSource, int4 rectDest)
-{
-	int4 clippedRect = rectSource;
-
-	if (rectSource.x < rectDest.x) clippedRect.x = rectDest.x;
-	if (rectSource.y < rectDest.y) clippedRect.y = rectDest.y;
-
-	if (rectSource.z > rectDest.z) clippedRect.z = rectDest.z;
-	if (rectSource.w > rectDest.w) clippedRect.w = rectDest.w;
-
-	return clippedRect;
-}
-
-int4 ClipRect(int4 rectSource, int2 rectDest)
-{
-	return ClipRect(rectSource, { 0, 0, rectDest.x, rectDest.y });
-}
-
-int2 ClipPoint(int2 point, int4 rect)
-{
-	int2 clippedPoint = point;
-
-	if (point.x < rect.x) clippedPoint.x = rect.x;
-	else if (point.x > rect.z) clippedPoint.x = rect.z;
-
-	if (point.y < rect.y) clippedPoint.y = rect.y;
-	else if (point.y > rect.w) clippedPoint.y = rect.w;
-
-	return clippedPoint;
-}
-
-int ClipPoint(int point, int2 range)
-{
-	int clippedPoint = point;
-
-	if (point < range.x) clippedPoint = range.x;
-	else if (point > range.y) clippedPoint = range.y;
-
-	return clippedPoint;
 }
 
 // TODO: current algorithm is to slow

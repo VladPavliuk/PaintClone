@@ -10,6 +10,12 @@
 #include "fonts.h"
 #include "string.h"
 
+enum class DialogWindowType
+{
+	NONE,
+	COLOR_PICKER
+};
+
 enum class DRAW_TOOL
 {
 	UNDEFINED,
@@ -40,6 +46,8 @@ enum class UI_ELEMENT
 	TEXT_BLOCK_RIGHT_RESIZE,
 	TEXT_BLOCK_BOTTOM_RESIZE,
 	TEXT_BLOCK_LEFT_RESIZE,
+
+	COLOR_PICKER_MODAL_WINDOW,
 
 	PENCIL_TOOL,
 	FILL_TOOL,
@@ -94,6 +102,10 @@ struct Bitmap
 
 struct WindowData
 {
+	HWND parentHwnd;
+	HINSTANCE hInstance;
+	int4 windowRect;
+
 	HDC windowDC;
 	BITMAPINFO windowBitmapInfo;
 	
@@ -122,6 +134,7 @@ struct WindowData
 
 	bool wasRightButtonPressed;
 	bool wasRightButtonReleased;
+	bool wasMouseDoubleClick;
 
 	//> ui
 	UI_ELEMENT prevHotUi;
@@ -148,7 +161,8 @@ struct WindowData
 	DRAW_TOOL selectedTool;
 	SimpleDynamicArray<ToolTile> toolTiles;
 
-	ubyte3 selectedColor;
+	//ubyte3 selectedColor;
+	UI_ELEMENT selectedColorBruchTile;
 	SimpleDynamicArray<BrushColorTile> brushColorTiles;
 
 	int2 initClickOnCanvasPosition;
@@ -158,10 +172,21 @@ struct WindowData
 	int4 mouseCanvasPositionLabelBox;
 
 	LARGE_INTEGER perfomanceCounterFreq;
+
+	//> dialogs
+	DialogWindowType dialogType;
+	HWND dialogHwnd;
+	HDC dialogDC;
+	BITMAPINFO dialogBitmapInfo;
+	Bitmap dialogBitmap;
+
+	UI_ELEMENT selectedColorBrushForColorPicker;
+	//<
 };
 
 double GetCurrentTimestamp(WindowData* windowData);
 
 void InitWindowData(WindowData* windowData);
 
+ubyte3 GetSelectedColor(WindowData* windowData);
 //LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);

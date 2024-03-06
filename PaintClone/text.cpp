@@ -1,6 +1,6 @@
 #include "text.h"
 
-void DrawTextLine(WideString* string, int2 bottomLeft, FontDataRasterized* font, ubyte4* bitmap, int2 bitmapSize)
+void DrawTextLine(WideString* string, int2 bottomLeft, FontDataRasterized* font, Bitmap bitmap)
 {
 	bottomLeft.y -= font->descent;
 
@@ -13,7 +13,7 @@ void DrawTextLine(WideString* string, int2 bottomLeft, FontDataRasterized* font,
 
 		if (glyph.hasBitmap)
 		{
-			CopyMonochromicBitmapToBitmap(glyph.bitmap, glyph.bitmapSize, bitmap, glyphPosition, bitmapSize);
+			CopyMonochromicBitmapToBitmap(glyph.bitmap, glyph.bitmapSize, bitmap.pixels, glyphPosition, bitmap.size);
 		}
 
 		bottomLeft.x += glyph.advanceWidth;

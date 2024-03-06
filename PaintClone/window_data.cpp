@@ -31,6 +31,7 @@ void InitWindowData(WindowData* windowData)
 	windowData->isRightButtonHold = false;
 	windowData->wasRightButtonPressed = false;
 	windowData->wasRightButtonPressed = false;
+	windowData->wasMouseDoubleClick = false;
 	windowData->mousePositionChanged = false;
 
 	windowData->hotUi = UI_ELEMENT::NONE;
@@ -39,7 +40,8 @@ void InitWindowData(WindowData* windowData)
 	windowData->sumbitedUi = UI_ELEMENT::NONE;
 	windowData->prevMousePosition = { 0,0 };
 	windowData->mousePosition = { 0,0 };
-	windowData->selectedColor = { 0,0,0 };
+
+	windowData->selectedColorBruchTile = UI_ELEMENT::COLOR_BRUCH_1;
 	windowData->selectedTool = DRAW_TOOL::PENCIL;
 
 	windowData->isTextEnteringMode = false;
@@ -57,4 +59,23 @@ void InitWindowData(WindowData* windowData)
 
 	windowData->canvasSizeLabelBox = { 200, 0, 350, 30 };
 	windowData->mouseCanvasPositionLabelBox = { 500, 0, 350, 30 };
+
+	windowData->dialogType = DialogWindowType::NONE;
+	windowData->dialogHwnd = 0;
+	windowData->dialogDC = 0;
+	windowData->selectedColorBrushForColorPicker = UI_ELEMENT::NONE;
+}
+
+ubyte3 GetSelectedColor(WindowData* windowData)
+{
+	for (int i = 0; i < windowData->brushColorTiles.length; i++)
+	{
+		BrushColorTile colorTile = windowData->brushColorTiles.get(i);
+		if (colorTile.uiElement == windowData->selectedColorBruchTile)
+		{
+			return colorTile.color;
+		}
+	}
+
+	return { 0,0,0 };
 }

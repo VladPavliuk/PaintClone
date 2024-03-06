@@ -85,6 +85,7 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 	//}
 }
 
+
 LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
@@ -94,6 +95,31 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		WindowData* windowData = (WindowData*)((CREATESTRUCTW*)lParam)->lpCreateParams;
 		SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)windowData);
 
+		break;
+	}
+	case WM_CREATE:
+	{
+		//WNDCLASSEXW wc = { 0 };
+		//wc.cbSize = sizeof(WNDCLASSEXW);
+		//wc.lpfnWndProc = (WNDPROC)ChildWindowCallback;
+		//wc.hInstance = testInstance;
+		////wc.hbrBackground = GetSysColorBrush(COLOR_3DFACE);
+		//wc.lpszClassName = L"DialogClass";
+		//RegisterClassExW(&wc);
+
+		//EnableWindow(hwnd, FALSE);
+
+		//HWND test = CreateWindowExW(WS_EX_DLGMODALFRAME, L"DialogClass", L"Dialog Box",
+		//	WS_VISIBLE | WS_SYSMENU | WS_CAPTION, 0, 100, 200, 150,
+		//	hwnd, NULL, testInstance, NULL);
+
+		//IDD_DIALOG1
+		//HWND test = CreateDialog(testInstance, L"asdasdas", hwnd, (DLGPROC)ChildWindowCallback);
+		//HWND test = CreateDialog(testInstance, MAKEINTRESOURCE(101), hwnd, (DLGPROC)ChildWindowCallback);
+		//DWORD test2 = GetLastError();
+		//HWND test = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(101), hwnd, ChildWindowCallback);
+		//HWND test = CreateDialog(GetModuleHandle(NULL), L"ASD", 0, ChildWindowCallback);
+		//HWND test = CreateDialogParamW(GetModuleHandle(NULL), L"ASD", hwnd, ChildWindowCallback, 0);
 		break;
 	}
 	case WM_LBUTTONUP:
@@ -483,12 +509,26 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			windowData->lastMouseCanvasPosition = windowData->mousePosition;
 		}
 
-		/*if (windowData->isRightButtonHold
-			&& windowData->isTextEnteringMode
-			&& IsInRect(windowData->textBlockOnClient, windowData->mousePosition))
-		{
-			OutputDebugString(L"ASD\n");
-		}*/
+		break;
+	}
+	case WM_LBUTTONDBLCLK:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		/*int xMouse = GET_X_LPARAM(lParam);
+		int yMouse = GET_Y_LPARAM(lParam);*/
+
+		windowData->wasMouseDoubleClick = true;
+
+		break;
+	}
+	case WM_MOVE:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		RECT windowRect;
+		GetWindowRect(hwnd, &windowRect);
+		windowData->windowRect = { windowRect.left, windowRect.top, windowRect.right, windowRect.bottom };
 
 		break;
 	}
@@ -507,6 +547,11 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		{
 			break;
 		}
+
+		RECT windowRect;
+		GetWindowRect(hwnd, &windowRect);
+		windowData->windowRect = { windowRect.left, windowRect.top, windowRect.right, windowRect.bottom };
+
 		RECT clientRect;
 		GetClientRect(hwnd, &clientRect);
 		windowData->windowBitmap.size.x = clientRect.right - clientRect.left;
@@ -538,7 +583,10 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 // use better fill algorithm
 // add do/undo buttons
 // add bmp image storing/loading
-// 
+// move winProc callback into a separate func
+// add different font size storing
+// add font loading in a separate thread
+// add dynamic lookup of a symbol, if it's not predefined in the alphabet
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, int windowMode)
 {
 	/*WideString test = WideString(L"YEAH");
@@ -549,6 +597,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	windowClass.hInstance = hInstance;
 	windowClass.lpszClassName = L"window class";
 	windowClass.lpfnWndProc = WindowCallback;
+	windowClass.style = CS_DBLCLKS;
 	windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
 
 	RegisterClass(&windowClass);
@@ -569,10 +618,35 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		&windowData
 	);
 
+	//>
+
+	//WNDCLASS childWindowClass = {};
+	//childWindowClass.hInstance = hInstance;
+	//childWindowClass.lpszClassName = L"child";
+	//childWindowClass.lpfnWndProc = ChildWindowCallback;
+	//childWindowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+	//RegisterClass(&childWindowClass);
+
+	//HWND childHwnd = CreateWindowExW(
+	//	0,
+	//	childWindowClass.lpszClassName,
+	//	L"CHILD",
+	//	WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CHILD /* | CS_VREDRAW | CS_HREDRAW*/,
+	//	CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+	//	hwnd, 0,
+	//	hInstance,
+	//	0
+	//);
+	
+	//<
+
 	if (hwnd == 0)
 	{
 		return -1;
 	}
+
+	windowData.hInstance = hInstance;
+	windowData.parentHwnd = hwnd;
 
 	//> Remove fade in animation when window is opened up
 	BOOL attrib = TRUE;
@@ -658,6 +732,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		DrawCanvasSizeLabel(&windowData);
 		DrawMouseCanvasPositionLabel(&windowData);
 
+		/*WideString modalWindowTitle = WideString(L"TEST");
+		DrawModalWindow(&windowData, &modalWindowTitle,{100,100,200,200}, UI_ELEMENT::COLOR_PICKER_MODAL_WINDOW);
+		modalWindowTitle.freeMemory();*/
+
 		HandleUiElements(&windowData);
 
 		// NOTE: when charger is not connected to the laptop, it has around 10x slower performance!
@@ -665,7 +743,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 			0, 0, windowData.windowBitmap.size.x, windowData.windowBitmap.size.y,
 			windowData.backgroundDC, 0, 0, SRCCOPY);
 
-		
 		windowData.sumbitedUi = UI_ELEMENT::NONE;
 		windowData.sumbitedOnAnyHotUi = UI_ELEMENT::NONE;
 
@@ -673,16 +750,22 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		windowData.prevHotUi = windowData.hotUi;
 		windowData.hotUi = UI_ELEMENT::NONE;
 
+		if (windowData.dialogType != DialogWindowType::NONE)
+		{
+			RenderDialog(&windowData);
+		}
+
 		// NOTE: at the end of frame we should clean mouse buttons state
 		// otherwise we might get overspaming behaviour
 		windowData.wasRightButtonPressed = false;
 		windowData.wasRightButtonReleased = false;
+		windowData.wasMouseDoubleClick = false;
 		windowData.mousePositionChanged = false;
 
 		timeDelta = GetCurrentTimestamp(&windowData) - timeDelta;
 		char buff[100];
 		sprintf_s(buff, "frame time: %f ml sec.\n", timeDelta * 1000.0f);
-		//OutputDebugStringA(buff);
+		OutputDebugStringA(buff);
 		deltasSum += timeDelta;
 		framesCount++;
 	}

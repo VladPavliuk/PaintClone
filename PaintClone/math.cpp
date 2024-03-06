@@ -40,3 +40,59 @@ int minInt(int a, int b)
 {
 	return a < b ? a : b;
 }
+
+float absFloat(float a)
+{
+	return a >= 0 ? a : -a;
+}
+
+float maxFloat(float a, float b)
+{
+	return a > b ? a : b;
+}
+
+float minFloat(float a, float b)
+{
+	return a < b ? a : b;
+}
+
+int4 ClipRect(int4 rectSource, int4 rectDest)
+{
+	int4 clippedRect = rectSource;
+
+	if (rectSource.x < rectDest.x) clippedRect.x = rectDest.x;
+	if (rectSource.y < rectDest.y) clippedRect.y = rectDest.y;
+
+	if (rectSource.z > rectDest.z) clippedRect.z = rectDest.z;
+	if (rectSource.w > rectDest.w) clippedRect.w = rectDest.w;
+
+	return clippedRect;
+}
+
+int4 ClipRect(int4 rectSource, int2 rectDest)
+{
+	return ClipRect(rectSource, { 0, 0, rectDest.x, rectDest.y });
+}
+
+int2 ClipPoint(int2 point, int4 rect)
+{
+	int2 clippedPoint = point;
+
+	if (point.x < rect.x) clippedPoint.x = rect.x;
+	else if (point.x > rect.z) clippedPoint.x = rect.z;
+
+	if (point.y < rect.y) clippedPoint.y = rect.y;
+	else if (point.y > rect.w) clippedPoint.y = rect.w;
+
+	return clippedPoint;
+}
+
+int ClipPoint(int point, int2 range)
+{
+	int clippedPoint = point;
+
+	if (point < range.x) clippedPoint = range.x;
+	else if (point > range.y) clippedPoint = range.y;
+
+	return clippedPoint;
+}

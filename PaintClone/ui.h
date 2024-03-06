@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cmath>
+
 #include "renderer.h"
 #include "math.h"
 #include "text.h"
+#include "dialog_window.h"
 
 void HandleUiElements(WindowData* windowData);
 
@@ -31,6 +34,8 @@ void DrawButton(
 	ubyte3 bgColor,
 	ubyte3 hoveredBgColor,
 	UI_ELEMENT uiElement);
+
+void DrawModalWindow(WindowData* windowData, WideString* title, int4 modalWindowBox, UI_ELEMENT uiElement);
 
 void DrawColorsBrush(WindowData* windowData, SimpleDynamicArray<BrushColorTile>* colors, int2 bottomLeft,
 	int2 singleColorTileSize, int xDistanceToNextColor);

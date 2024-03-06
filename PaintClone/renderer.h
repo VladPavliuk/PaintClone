@@ -22,11 +22,6 @@ void CopyTextBufferToCanvas(WindowData* windowData);
 void DrawRect(Bitmap bitmap, int2 bottomLeft, int2 size, ubyte3 color);
 void DrawBorderRect(Bitmap bitmap, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color);
 
-int4 ClipRect(int4 rectSource, int4 rectDest);
-int4 ClipRect(int4 rectSource, int2 rectDest);
-int2 ClipPoint(int2 point, int4 rect);
-int ClipPoint(int point, int2 range);
-
 inline ubyte3 GetPixelColor(ubyte4* bitmap, int2 bitmapSize, int2 pixelCoord);
 inline void DrawPixel(ubyte4* bitmap, int2 bitmapSize, int2 pixelCoord, ubyte3 color);
 
