@@ -2,8 +2,6 @@
 
 #include "renderer.h"
 
-void DrawTextLine(WideString* string, int2 bottomLeft, FontDataRasterized* font, Bitmap bitmap);
-
 void UpdateTextBlockTopLine(WindowData* windowData);
 
 void UpdateTextSelectionifShiftPressed(WindowData* windowData);

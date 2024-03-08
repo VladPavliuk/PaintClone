@@ -1,25 +1,5 @@
 #include "text.h"
 
-void DrawTextLine(WideString* string, int2 bottomLeft, FontDataRasterized* font, Bitmap bitmap)
-{
-	bottomLeft.y -= font->descent;
-
-	for (int i = 0; i < string->length; i++)
-	{
-		wchar_t symbol = string->chars[i];
-
-		RasterizedGlyph glyph = font->glyphs.get(symbol);
-		int2 glyphPosition = { bottomLeft.x, bottomLeft.y + glyph.boundaries.y };
-
-		if (glyph.hasBitmap)
-		{
-			CopyMonochromicBitmapToBitmap(glyph.bitmap, glyph.bitmapSize, bitmap.pixels, glyphPosition, bitmap.size);
-		}
-
-		bottomLeft.x += glyph.advanceWidth;
-	}
-}
-
 void _moveToNextLine(WindowData* windowData,
 	int lineHeight, int textBlockHeight,
 	int* currentLineWidth, int* lineIndex)
@@ -222,6 +202,8 @@ void RecreateGlyphsLayout(WindowData* windowData, WideString text, int lineMaxWi
 			windowData->glyphsLayout->get(i).freeMemory();
 		}
 		windowData->glyphsLayout->freeMemory();
+		free(windowData->glyphsLayout);
+		windowData->glyphsLayout = NULL;
 	}
 
 	windowData->glyphsLayout = SimpleDynamicArray<SimpleDynamicArray<int2>>::allocate(1);

@@ -30,7 +30,7 @@ void InitWindowData(WindowData* windowData)
 
 	windowData->isRightButtonHold = false;
 	windowData->wasRightButtonPressed = false;
-	windowData->wasRightButtonPressed = false;
+	windowData->wasRightButtonReleased = false;
 	windowData->wasMouseDoubleClick = false;
 	windowData->mousePositionChanged = false;
 
@@ -63,7 +63,9 @@ void InitWindowData(WindowData* windowData)
 	windowData->dialogType = DialogWindowType::NONE;
 	windowData->dialogHwnd = 0;
 	windowData->dialogDC = 0;
+
 	windowData->selectedColorBrushForColorPicker = UI_ELEMENT::NONE;
+	windowData->selectedColorInColorPicker = {0,0,0};
 }
 
 ubyte3 GetSelectedColor(WindowData* windowData)

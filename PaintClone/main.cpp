@@ -139,8 +139,29 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		windowData->isRightButtonHold = true;
 		windowData->wasRightButtonPressed = true;
-
 		SetCapture(hwnd);
+
+		break;
+	}
+	// NOTE: Double-clicking the left mouse button actually generates a sequence of four messages: 
+	// WM_LBUTTONDOWN, WM_LBUTTONUP, WM_LBUTTONDBLCLK, and WM_LBUTTONUP.
+	// all thouse 4 message are sent in the same sequance and in different time,
+	// so that means that app at every frame should handle each of them
+	case WM_LBUTTONDBLCLK:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		windowData->wasMouseDoubleClick = true;
+		break;
+	}
+	case WM_MOVE:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		RECT windowRect;
+		GetWindowRect(hwnd, &windowRect);
+		windowData->windowRect = { windowRect.left, windowRect.top, windowRect.right, windowRect.bottom };
+
 		break;
 	}
 	case WM_KEYUP:
@@ -356,7 +377,7 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			else if (VK_RIGHT == wParam)
 			{
 				bool wasAnyTextSelected = windowData->selectedTextStartIndex != -1;
-				int2 selectionRange = {-1,-1};
+				int2 selectionRange = { -1,-1 };
 				if (wasAnyTextSelected)
 				{
 					selectionRange = GetSelectedTextRange(windowData);
@@ -511,27 +532,6 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		break;
 	}
-	case WM_LBUTTONDBLCLK:
-	{
-		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-
-		/*int xMouse = GET_X_LPARAM(lParam);
-		int yMouse = GET_Y_LPARAM(lParam);*/
-
-		windowData->wasMouseDoubleClick = true;
-
-		break;
-	}
-	case WM_MOVE:
-	{
-		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-
-		RECT windowRect;
-		GetWindowRect(hwnd, &windowRect);
-		windowData->windowRect = { windowRect.left, windowRect.top, windowRect.right, windowRect.bottom };
-
-		break;
-	}
 	case WM_SIZE:
 	{
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
@@ -618,28 +618,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		&windowData
 	);
 
-	//>
-
-	//WNDCLASS childWindowClass = {};
-	//childWindowClass.hInstance = hInstance;
-	//childWindowClass.lpszClassName = L"child";
-	//childWindowClass.lpfnWndProc = ChildWindowCallback;
-	//childWindowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-	//RegisterClass(&childWindowClass);
-
-	//HWND childHwnd = CreateWindowExW(
-	//	0,
-	//	childWindowClass.lpszClassName,
-	//	L"CHILD",
-	//	WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CHILD /* | CS_VREDRAW | CS_HREDRAW*/,
-	//	CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-	//	hwnd, 0,
-	//	hInstance,
-	//	0
-	//);
-	
-	//<
-
 	if (hwnd == 0)
 	{
 		return -1;
@@ -686,6 +664,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	//DrawBorderRect(&windowData, { 500, 10 }, { 100, 10 }, 4, { 0,0,0 });
 	double deltasSum = 0.0f;
 	int framesCount = 1;
+	windowData.test = framesCount;
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
@@ -728,7 +707,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 		DrawTextBlock(&windowData);
 		DrawTextBlockResizeButtons(&windowData);
-		
+
 		DrawCanvasSizeLabel(&windowData);
 		DrawMouseCanvasPositionLabel(&windowData);
 
@@ -736,7 +715,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		DrawModalWindow(&windowData, &modalWindowTitle,{100,100,200,200}, UI_ELEMENT::COLOR_PICKER_MODAL_WINDOW);
 		modalWindowTitle.freeMemory();*/
 
-		HandleUiElements(&windowData);
+		/*if (windowData.sumbitedUi != UI_ELEMENT::NONE)
+		{
+			OutputDebugString(L"YEAH\n");
+		}*/
+
+		if (windowData.dialogType == DialogWindowType::NONE)
+		{
+			HandleUiElements(&windowData);
+		}
+		else
+		{
+			RenderDialog(&windowData);
+		}
 
 		// NOTE: when charger is not connected to the laptop, it has around 10x slower performance!
 		BitBlt(windowData.windowDC,
@@ -749,11 +740,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		windowData.prevMousePosition = windowData.mousePosition;
 		windowData.prevHotUi = windowData.hotUi;
 		windowData.hotUi = UI_ELEMENT::NONE;
-
-		if (windowData.dialogType != DialogWindowType::NONE)
-		{
-			RenderDialog(&windowData);
-		}
 
 		// NOTE: at the end of frame we should clean mouse buttons state
 		// otherwise we might get overspaming behaviour
@@ -768,6 +754,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 		OutputDebugStringA(buff);
 		deltasSum += timeDelta;
 		framesCount++;
+		windowData.test++;
 	}
 
 	// 08.02.2024 average frame time - 2.21 ml sec. without charger connected to the laptop, 0.34 ml sec. with charger connected to the laptop

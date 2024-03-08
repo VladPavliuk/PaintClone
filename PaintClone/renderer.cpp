@@ -160,7 +160,7 @@ void DrawLine(ubyte4* bitmap, int2 bitmapSize, int4 bitmapRect, int2 from, int2 
 
 void CopyTextBufferToCanvas(WindowData* windowData)
 {
-	int4 textBlockOnCanvas = windowData->textBlockOnClient;
+	/*int4 textBlockOnCanvas = windowData->textBlockOnClient;
 
 	textBlockOnCanvas.xy(textBlockOnCanvas.xy() - windowData->drawingZone.xy());
 	textBlockOnCanvas.zw(textBlockOnCanvas.zw() - windowData->drawingZone.xy());
@@ -168,13 +168,12 @@ void CopyTextBufferToCanvas(WindowData* windowData)
 	textBlockOnCanvas.xy(textBlockOnCanvas.xy() + windowData->drawingOffset);
 	textBlockOnCanvas.zw(textBlockOnCanvas.zw() + windowData->drawingOffset);
 
-	textBlockOnCanvas /= (float)windowData->drawingZoomLevel;
+	textBlockOnCanvas /= (float)windowData->drawingZoomLevel;*/
 
 	int2 bottomLeft = { windowData->textBlockOnClient.x,
-		windowData->textBlockOnClient.w - windowData->fontData.lineHeight * windowData->drawingZoomLevel };
-	bottomLeft -= { windowData->drawingZone.x, windowData->drawingZone.y };
+		windowData->textBlockOnClient.w};
+	bottomLeft -= windowData->drawingZone.xy();
 	bottomLeft += windowData->drawingOffset;
-	bottomLeft /= windowData->drawingZoomLevel;
 	int topLineIndex = windowData->topLineIndexToShow;
 	int maxLinesInTextBlock = windowData->textBlockOnClient.size().y / windowData->fontData.lineHeight;
 
@@ -186,7 +185,7 @@ void CopyTextBufferToCanvas(WindowData* windowData)
 		}
 
 		auto line = windowData->glyphsLayout->get(layoutLineIndex);
-		int lineTopOffset = (windowData->textBlockOnClient.w - windowData->drawingZone.y) - (lineIndex + 1) * windowData->fontData.lineHeight;
+		int lineTopOffset = bottomLeft.y / windowData->drawingZoomLevel - (lineIndex + 1) * windowData->fontData.lineHeight;
 
 		for (int j = 0; j < line.length; j++)
 		{
@@ -194,7 +193,7 @@ void CopyTextBufferToCanvas(WindowData* windowData)
 			int charIndex = glyphData.y;
 
 			wchar_t code = windowData->textBuffer.chars[charIndex];
-			int lineLeftOffset = (windowData->textBlockOnClient.x - windowData->drawingZone.x) + glyphData.x;
+			int lineLeftOffset = (bottomLeft.x + glyphData.x) / windowData->drawingZoomLevel;
 
 			if (code != L'\n' && code != L'\0') // glyphs layout includes \0 at the end of the last line
 			{
@@ -292,6 +291,32 @@ void FillFromPixel(WindowData* windowData, int2 fromPixel, ubyte3 color)
 				queue.enqueue(neighbourPixel);
 			}
 		}
+	}
+}
+
+void DrawTextLine(WideString* string, int2 bottomLeft, FontDataRasterized* font, Bitmap bitmap)
+{
+	DrawTextLine(string->chars, bottomLeft, font, bitmap);
+}
+
+void DrawTextLine(const wchar_t* string, int2 bottomLeft, FontDataRasterized* font, Bitmap bitmap)
+{
+	int stringLength = (int)wcslen(string);
+	bottomLeft.y -= font->descent;
+
+	for (int i = 0; i < stringLength; i++)
+	{
+		wchar_t symbol = string[i];
+
+		RasterizedGlyph glyph = font->glyphs.get(symbol);
+		int2 glyphPosition = { bottomLeft.x, bottomLeft.y + glyph.boundaries.y };
+
+		if (glyph.hasBitmap)
+		{
+			CopyMonochromicBitmapToBitmap(glyph.bitmap, glyph.bitmapSize, bitmap.pixels, glyphPosition, bitmap.size);
+		}
+
+		bottomLeft.x += glyph.advanceWidth;
 	}
 }
 

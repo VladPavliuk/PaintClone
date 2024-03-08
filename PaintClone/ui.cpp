@@ -36,6 +36,16 @@ void HandleUiElements(WindowData* windowData)
 				windowData->topLineIndexToShow = 0;
 				windowData->selectedTextStartIndex = -1;
 				windowData->textBuffer.clear();
+				if (windowData->glyphsLayout != NULL)
+				{
+					for (int i = 0; i < windowData->glyphsLayout->length; i++)
+					{
+						windowData->glyphsLayout->get(i).freeMemory();
+					}
+					windowData->glyphsLayout->freeMemory();
+					free(windowData->glyphsLayout);
+					windowData->glyphsLayout = NULL;
+				}
 				windowData->isTextEnteringMode = false;
 				break;
 				//<
@@ -155,6 +165,8 @@ void HandleUiElements(WindowData* windowData)
 		if (windowData->wasMouseDoubleClick)
 		{
 			windowData->selectedColorBrushForColorPicker = windowData->selectedColorBruchTile;
+			windowData->selectedColorInColorPicker = GetSelectedColor(windowData);
+
 			ShowDialogWindow(windowData, DialogWindowType::COLOR_PICKER);
 		}
 		break;
@@ -953,6 +965,15 @@ void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEM
 	if (isInRect)
 	{
 		windowData->hotUi = uiElement;
+
+		if (windowData->wasMouseDoubleClick)
+		{
+			windowData->sumbitedUi = uiElement;
+			windowData->sumbitedOnAnyHotUi = uiElement;
+			windowData->activeUi = UI_ELEMENT::NONE;
+			windowData->activeUiOffset = { -1, -1 };
+			return;
+		}
 	}
 	//windowData->hotUi = isInRect ? uiElement : UI_ELEMENT::NONE;
 
@@ -960,6 +981,7 @@ void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEM
 	{
 		if (windowData->wasRightButtonReleased)
 		{
+			//OutputDebugString(L"released\n");
 			if (windowData->hotUi == uiElement) windowData->sumbitedUi = uiElement;
 
 			windowData->sumbitedOnAnyHotUi = uiElement;
@@ -971,6 +993,7 @@ void CheckHotActiveForUiElement(WindowData* windowData, int4 boundaries, UI_ELEM
 	{
 		if (windowData->wasRightButtonPressed)
 		{
+			//OutputDebugString(L"pressed\n");
 			windowData->activeUiOffset = { windowData->mousePosition.x - boundaries.x, windowData->mousePosition.y - boundaries.y };
 			windowData->activeUi = uiElement;
 		}

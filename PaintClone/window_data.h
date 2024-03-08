@@ -102,6 +102,7 @@ struct Bitmap
 
 struct WindowData
 {
+	int test;
 	HWND parentHwnd;
 	HINSTANCE hInstance;
 	int4 windowRect;
@@ -180,7 +181,12 @@ struct WindowData
 	BITMAPINFO dialogBitmapInfo;
 	Bitmap dialogBitmap;
 
+	// color picker
+	bool wasColorPickerPreRendered;
+	int4 colorPickerRect;
+	Bitmap colorPickerBitmap;
 	UI_ELEMENT selectedColorBrushForColorPicker;
+	ubyte3 selectedColorInColorPicker;
 	//<
 };
 

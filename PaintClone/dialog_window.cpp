@@ -29,10 +29,27 @@ LRESULT WINAPI ChildWindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARA
 	{
 		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
-		/*int xMouse = GET_X_LPARAM(lParam);
-		int yMouse = GET_Y_LPARAM(lParam);*/
-
 		windowData->wasMouseDoubleClick = true;
+		break;
+	}
+	case WM_LBUTTONUP:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		windowData->isRightButtonHold = false;
+		windowData->wasRightButtonReleased = true;
+
+		// NOTE: We have to release previously capture, because we won't be able to use windws default buttons on the window
+		ReleaseCapture();
+		break;
+	}
+	case WM_LBUTTONDOWN:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		windowData->isRightButtonHold = true;
+		windowData->wasRightButtonPressed = true;
+		SetCapture(hwnd);
 
 		break;
 	}
@@ -57,8 +74,12 @@ LRESULT WINAPI ChildWindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARA
 		windowData->dialogDC = 0;
 		free(windowData->dialogBitmap.pixels);
 
+		free(windowData->colorPickerBitmap.pixels);
+		windowData->wasColorPickerPreRendered = false;
+
 		// clear data related to specific dialog type
 		windowData->selectedColorBrushForColorPicker = UI_ELEMENT::NONE;
+		ReleaseCapture();
 		break;
 	}
 	default:
@@ -82,6 +103,7 @@ void ShowDialogWindow(WindowData* windowData, DialogWindowType dialogWindowType)
 		WNDCLASS childWc = {};
 		childWc.lpfnWndProc = (WNDPROC)ChildWindowCallback;
 		childWc.style = CS_DBLCLKS; // CS_DBLCLKS enables usage of WM_LBUTTONDBLCLK
+		//childWc.hbrBackground = (HBRUSH)GetStockObject(GRAY_BRUSH);
 		childWc.hInstance = windowData->hInstance;
 		childWc.lpszClassName = childClassName;
 		RegisterClass(&childWc);
@@ -94,14 +116,19 @@ void ShowDialogWindow(WindowData* windowData, DialogWindowType dialogWindowType)
 	case DialogWindowType::COLOR_PICKER:
 	{
 		dialogTitle = WideString(L"Color picker");
-		childWindowSize = { 300, 300 };
+		childWindowSize = { 600, 400 };
+		windowData->wasColorPickerPreRendered = false;
+		windowData->colorPickerRect = { 350, 150, 550, 350 };
+		windowData->colorPickerBitmap.size = windowData->colorPickerRect.size();
+
+		windowData->colorPickerBitmap.pixels = (ubyte4*)malloc(4 * windowData->colorPickerBitmap.size.x * windowData->colorPickerBitmap.size.y);
+
 		break;
 	}
 	default:
 		assert(false);
 		break;
 	}
-
 
 	int2 parentWindowSize = windowData->windowRect.size();
 
@@ -151,79 +178,232 @@ void ShowDialogWindow(WindowData* windowData, DialogWindowType dialogWindowType)
 
 	windowData->dialogBitmap.pixels = (ubyte4*)malloc(4 * windowData->dialogBitmap.size.x * windowData->dialogBitmap.size.y);
 	// TODO: use win32 styles for window creation, to create default window color
-	ZeroMemory(windowData->dialogBitmap.pixels, 4 * windowData->dialogBitmap.size.x * windowData->dialogBitmap.size.y);
+	//ZeroMemory(windowData->dialogBitmap.pixels, 4 * windowData->dialogBitmap.size.x * windowData->dialogBitmap.size.y);
 	//FillBitmapWithWhite(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size);
 
 	windowData->dialogHwnd = childHwnd;
 	windowData->dialogType = dialogWindowType;
 }
 
-float _colorChanelFunction(float x)
+
+// Formula for caluculating hsl was taken from here
+// https://www.niwa.nu/2013/05/math-behind-colorspace-conversions-rgb-hsl/
+float _chanelToHslFormat(float tmp1, float tmp2, float chanelTmp)
 {
-	// y = max(min(-|x - 3| + 2, 1), 0)
-	return maxFloat(minFloat(-absFloat(x - 3.0f) + 2.0f, 1.0f), 0.0f);
-	//return maxFloat(minFloat(-absFloat(x - 0.5f) + 0.333333f, 0.166666f), 0.0f);
+	if (chanelTmp < 0) chanelTmp += 1.0f;
+	else if (chanelTmp > 1.0f) chanelTmp -= 1.0f;
+
+	// red tests
+	if (6.0f * chanelTmp < 1.0f)
+	{
+		return tmp2 + (tmp1 - tmp2) * 6.0f * chanelTmp;
+	}
+
+	if (2.0f * chanelTmp < 1.0f)
+	{
+		return tmp1;
+	}
+
+	if (3.0f * chanelTmp < 2.0f)
+	{
+		return tmp2 + (tmp1 - tmp2) * (0.666f - chanelTmp) * 6.0f;
+	}
+
+	return tmp2;
 }
 
-ubyte3 GetColorFromColorPicker(int2 mousePosition, int2 colorPickerSize)
+int2 GetLocationOnColorPickerByColor(ubyte3 color, int2 colorPickerSize)
 {
-	const float functionSegmentsCount = 6.0f;
-	float xPoint = functionSegmentsCount * (float)mousePosition.x / (float)colorPickerSize.x;
+	float red = (float)color.x / 255.0f;
+	float green = (float)color.y / 255.0f;
+	float blue = (float)color.z / 255.0f;
 
-	float xPointShiftedToRed = xPoint + 3.0f; // red
-	float xPointShiftedToGreen = xPoint + 1.0f; // green
-	float xPointShiftedToBlue = xPoint + 5.0f; // blue
+	float max = maxFloat(red, maxFloat(green, blue));
+	float min = minFloat(red, minFloat(green, blue));
 
-	if (xPointShiftedToRed >= functionSegmentsCount) xPointShiftedToRed -= functionSegmentsCount;
-	if (xPointShiftedToGreen >= functionSegmentsCount) xPointShiftedToGreen -= functionSegmentsCount;
-	if (xPointShiftedToBlue >= functionSegmentsCount) xPointShiftedToBlue -= functionSegmentsCount;
+	float lum = (max + min) / 2.0f;
 
-	ubyte r = (ubyte)(255.0f * _colorChanelFunction(xPointShiftedToRed));
-	ubyte g = (ubyte)(255.0f * _colorChanelFunction(xPointShiftedToBlue));
-	ubyte b = (ubyte)(255.0f * _colorChanelFunction(xPointShiftedToGreen));
+	float hue = 0;
+	float sat = 0;
 
-	return { r,g,b };
+	if (lum <= 0.5f)
+	{
+		sat = (max - min) / (max + min);
+	}
+	else
+	{
+		sat = (max - min) / (2.0f - max - min);
+	}
+
+	if (max == min)
+	{
+		hue = 0.0f;
+	}
+	else if (red >= green && red >= blue)
+	{
+		hue = (green - blue) / (max - min);
+	}
+	else if (green >= red && green >= blue)
+	{
+		hue = 2.0f + (blue - red) / (max - min);
+	}
+	else if (blue >= red && blue >= green)
+	{
+		hue = 4.0f + (red - green) / (max - min);
+	}
+	else
+	{
+		assert(false);
+	}
+
+	if (hue < 0)
+	{
+		hue += 6.0f;
+	}
+
+	hue /= 6.0f;
+
+	return {
+		(int)(hue * (float)colorPickerSize.x),
+		(int)(sat * (float)colorPickerSize.y)
+	};
+}
+
+ubyte3 GetColorFromColorPicker(int2 mousePosition, int2 colorPickerSize, int lum)
+{
+	float xPoint = (float)mousePosition.x / (float)colorPickerSize.x;
+	float yPoint = (float)mousePosition.y / (float)colorPickerSize.y;
+
+	float lumF = (float)lum / (float)100;
+
+	ubyte greyShade = (ubyte)(255.0f * (float)lum / 100.0f);
+
+	if (mousePosition.y == 0)
+	{
+		return { greyShade, greyShade, greyShade };
+	}
+
+	float hueF = (float)mousePosition.x / (float)colorPickerSize.x;
+	float satF = (float)mousePosition.y / (float)colorPickerSize.y;
+
+	float tmp1 = lumF < 0.5f
+		? lumF * (1.0f + satF)
+		: lumF + satF - lumF * satF;
+
+	float tmp2 = 2.0f * lumF - tmp1;
+
+	float tmpRed = hueF + 0.333f;
+	float tmpGreen = hueF;
+	float tmpBlue = hueF - 0.333f;
+
+	float redF = _chanelToHslFormat(tmp1, tmp2, tmpRed);
+	float greenF = _chanelToHslFormat(tmp1, tmp2, tmpGreen);
+	float blueF = _chanelToHslFormat(tmp1, tmp2, tmpBlue);
+
+	ubyte red = (ubyte)(redF * 255.0f);
+	ubyte green = (ubyte)(greenF * 255.0f);
+	ubyte blue = (ubyte)(blueF * 255.0f);
+
+	return { red, green, blue };
+}
+
+// That's a simpler approach rather then trying to create some custom solution of mapping colors to a rectangular
+// even though it's slower around 4 times
+void DrawColorPicker(Bitmap bitmap, int2 colorPickerSize, int lum)
+{
+	assert(lum >= 0);
+	assert(lum < 100);
+
+	float lumF = (float)lum / (float)100;
+
+	ubyte greyShade = (ubyte)(255.0f * (float)lum / 100.0f);
+
+	for (int x = 0; x < colorPickerSize.x; x++)
+	{
+		bitmap.pixels[x] = { greyShade, greyShade, greyShade, 255 };
+	}
+
+	for (int y = 1; y < colorPickerSize.y; y++)
+	{
+		for (int x = 0; x < colorPickerSize.x; x++)
+		{
+			ubyte3 color = GetColorFromColorPicker({ x, y }, colorPickerSize, lum);
+			bitmap.pixels[x + (y * bitmap.size.x)] = { color.z, color.y, color.x, 255 };
+		}
+	}
 }
 
 void RenderDialog(WindowData* windowData)
 {
+	FillBitmapWithWhite(windowData->dialogBitmap.pixels, windowData->dialogBitmap.size);
+
 	switch (windowData->dialogType)
 	{
 	case DialogWindowType::COLOR_PICKER:
 	{
-		int2 colorPickerSize = {
-			windowData->dialogBitmap.size.x,
-			windowData->dialogBitmap.size.y
-		};
+		int4 colorPickerRect = windowData->colorPickerRect;
+		int2 colorPickerSize = windowData->colorPickerRect.size();
 
-		//TODO: draw it onec and cache the bitmap
-		const float functionSegmentsCount = 6.0f;
-		for (int i = 0; i < colorPickerSize.x; i++)
+		int lum = 50;
+		// Update selected color
+		if (windowData->isRightButtonHold && IsInRect(colorPickerRect, windowData->mousePosition))
 		{
-			float xPoint = functionSegmentsCount * (float)i / (float)colorPickerSize.x;
+			int2 mousePositionOnColorPicker = windowData->mousePosition - colorPickerRect.xy();
 
-			float xPointShiftedToRed = xPoint + 3.0f; // red
-			float xPointShiftedToGreen = xPoint + 1.0f; // green
-			float xPointShiftedToBlue = xPoint + 5.0f; // blue
-
-			if (xPointShiftedToRed >= functionSegmentsCount) xPointShiftedToRed -= functionSegmentsCount;
-			if (xPointShiftedToGreen >= functionSegmentsCount) xPointShiftedToGreen -= functionSegmentsCount;
-			if (xPointShiftedToBlue >= functionSegmentsCount) xPointShiftedToBlue -= functionSegmentsCount;
-
-			ubyte r = (ubyte)(255.0f * _colorChanelFunction(xPointShiftedToRed));
-			ubyte g = (ubyte)(255.0f * _colorChanelFunction(xPointShiftedToBlue));
-			ubyte b = (ubyte)(255.0f * _colorChanelFunction(xPointShiftedToGreen));
-
-			for (int j = 0; j < colorPickerSize.y; j++)
-			{
-				windowData->dialogBitmap.pixels[i + j * colorPickerSize.x] = { b,g,r,255 };
-			}
+			windowData->selectedColorInColorPicker = GetColorFromColorPicker(mousePositionOnColorPicker, colorPickerSize, lum);
 		}
 
-		if (windowData->wasMouseDoubleClick)
+		// Draw selected color
+		DrawRect(windowData->dialogBitmap, { 30,30 }, { 60,60 }, windowData->selectedColorInColorPicker);
+		DrawTextLine(L"Color|Solid", { 30,0 }, &windowData->fontData, windowData->dialogBitmap);
+
+		// TODO: draw it once and cache the bitmap
+		if (!windowData->wasColorPickerPreRendered)
 		{
-			ubyte3 selectedColor = GetColorFromColorPicker(windowData->mousePosition, colorPickerSize);
-			
+			DrawColorPicker(windowData->colorPickerBitmap, colorPickerSize, lum);
+
+			windowData->wasColorPickerPreRendered = true;
+		}
+
+		CopyBitmapToBitmap(windowData->colorPickerBitmap.pixels, windowData->colorPickerBitmap.size,
+			windowData->dialogBitmap.pixels, windowData->colorPickerRect.xy(), windowData->dialogBitmap.size);
+		DrawBorderRect(windowData->dialogBitmap, windowData->colorPickerRect.xy() - 1, windowData->colorPickerRect.size() + 1, 1, { 0,0,0 });
+
+		int2 selectedColorsPoint = GetLocationOnColorPickerByColor(windowData->selectedColorInColorPicker, colorPickerSize);
+		selectedColorsPoint += colorPickerRect.xy();
+
+		// Draw point that indicates which color is selected
+		int4 topArrow = ClipRect(colorPickerRect, {
+			selectedColorsPoint.x - 1, selectedColorsPoint.y + 2,
+			selectedColorsPoint.x + 1, selectedColorsPoint.y + 10
+			});
+
+		int4 bottomArrow = ClipRect(colorPickerRect, {
+			selectedColorsPoint.x - 1, selectedColorsPoint.y - 12,
+			selectedColorsPoint.x + 1, selectedColorsPoint.y - 2
+			});
+
+		int4 leftArrow = ClipRect(colorPickerRect, {
+			selectedColorsPoint.x - 12, selectedColorsPoint.y - 1,
+			selectedColorsPoint.x - 2, selectedColorsPoint.y + 1
+			});
+
+		int4 rightArrow = ClipRect(colorPickerRect, {
+			selectedColorsPoint.x + 2, selectedColorsPoint.y - 1,
+			selectedColorsPoint.x + 10, selectedColorsPoint.y + 1
+			});
+
+		DrawRect(windowData->dialogBitmap, topArrow.xy(), topArrow.size(), { 0, 0, 0 });
+		DrawRect(windowData->dialogBitmap, bottomArrow.xy(), bottomArrow.size(), { 0, 0, 0 });
+		DrawRect(windowData->dialogBitmap, leftArrow.xy(), leftArrow.size(), { 0, 0, 0 });
+		DrawRect(windowData->dialogBitmap, rightArrow.xy(), rightArrow.size(), { 0, 0, 0 });
+
+		if (windowData->wasMouseDoubleClick && IsInRect(windowData->colorPickerRect, windowData->mousePosition))
+		{
+			int2 mousePositionOnColorPicker = windowData->mousePosition - colorPickerRect.xy();
+
+			ubyte3 selectedColor = GetColorFromColorPicker(mousePositionOnColorPicker, colorPickerSize, lum);
+
 			BrushColorTile* testColorTile = nullptr;
 			for (int i = 0; i < windowData->brushColorTiles.length; i++)
 			{

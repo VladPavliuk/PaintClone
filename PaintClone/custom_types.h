@@ -74,6 +74,10 @@ struct int2
 		return *this;
 	}
 
+	bool operator==(int2 const& b)
+	{
+		return x == b.x && y == b.y;
+	}
 };
 
 struct float2

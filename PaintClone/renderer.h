@@ -22,6 +22,9 @@ void CopyTextBufferToCanvas(WindowData* windowData);
 void DrawRect(Bitmap bitmap, int2 bottomLeft, int2 size, ubyte3 color);
 void DrawBorderRect(Bitmap bitmap, int2 bottomLeft, int2 size, int lineWidth, ubyte3 color);
 
+void DrawTextLine(WideString* string, int2 bottomLeft, FontDataRasterized* font, Bitmap bitmap);
+void DrawTextLine(const wchar_t string[], int2 bottomLeft, FontDataRasterized* font, Bitmap bitmap);
+
 inline ubyte3 GetPixelColor(ubyte4* bitmap, int2 bitmapSize, int2 pixelCoord);
 inline void DrawPixel(ubyte4* bitmap, int2 bitmapSize, int2 pixelCoord, ubyte3 color);
 
