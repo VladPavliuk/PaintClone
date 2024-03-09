@@ -143,6 +143,11 @@ void HandleUiElements(WindowData* windowData)
 		windowData->selectedTool = DRAW_TOOL::LINE;
 		break;
 	}
+	case UI_ELEMENT::RECTANGLE_TOOL:
+	{
+		windowData->selectedTool = DRAW_TOOL::RECTANGLE;
+		break;
+	}
 	case UI_ELEMENT::COLOR_BRUCH_1:
 	case UI_ELEMENT::COLOR_BRUCH_2:
 	case UI_ELEMENT::COLOR_BRUCH_3:
@@ -212,6 +217,47 @@ void HandleUiElements(WindowData* windowData)
 
 			DrawLine(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size,
 				drawingRect, fromPixelToErase, toPixelToErase, GetSelectedColor(windowData));
+
+			windowData->initClickOnCanvasPosition = { -1,-1 };
+			break;
+		}
+		case DRAW_TOOL::RECTANGLE:
+		{
+			int4 drawingRect;
+
+			drawingRect.x = 0;
+			drawingRect.y = 0;
+			drawingRect.z = windowData->drawingZone.size().x;
+			drawingRect.w = windowData->drawingZone.size().y;
+
+			drawingRect.x += windowData->drawingOffset.x;
+			drawingRect.y += windowData->drawingOffset.y;
+			drawingRect.z += windowData->drawingOffset.x;
+			drawingRect.w += windowData->drawingOffset.y;
+
+			drawingRect.x = (int)((float)drawingRect.x / (float)windowData->drawingZoomLevel);
+			drawingRect.y = (int)((float)drawingRect.y / (float)windowData->drawingZoomLevel);
+			drawingRect.z = (int)((float)drawingRect.z / (float)windowData->drawingZoomLevel);
+			drawingRect.w = (int)((float)drawingRect.w / (float)windowData->drawingZoomLevel);
+
+			int2 fromPixel = ConvertFromScreenToDrawingCoords(windowData, windowData->initClickOnCanvasPosition);
+			int2 toPixel = ConvertFromScreenToDrawingCoords(windowData, windowData->mousePosition);
+
+			int4 rect = {
+				minInt(fromPixel.x, toPixel.x),
+				minInt(fromPixel.y, toPixel.y),
+				maxInt(fromPixel.x, toPixel.x),
+				maxInt(fromPixel.y, toPixel.y)
+			};
+
+			rect = ClipRect(rect, drawingRect);
+
+			int lineWidth = 1;
+			DrawBorderRect(windowData->canvasBitmap, rect.xy(), rect.size(),
+				lineWidth, GetSelectedColor(windowData));
+
+			/*DrawLine(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size,
+				drawingRect, fromPixel, toPixel, GetSelectedColor(windowData));*/
 
 			windowData->initClickOnCanvasPosition = { -1,-1 };
 			break;
@@ -408,6 +454,29 @@ void HandleUiElements(WindowData* windowData)
 
 			DrawLine(windowData->windowBitmap.pixels, windowData->windowBitmap.size,
 				windowData->drawingZone, fromPixelToErase, toPixelToErase, GetSelectedColor(windowData));
+		}
+		else if (windowData->selectedTool == DRAW_TOOL::RECTANGLE)
+		{
+			if (windowData->wasRightButtonPressed)
+			{
+				windowData->initClickOnCanvasPosition = windowData->mousePosition;
+			}
+
+			int2 fromPixel = windowData->initClickOnCanvasPosition;
+			int2 toPixel = windowData->mousePosition;
+
+			int4 rect = {
+				minInt(fromPixel.x, toPixel.x),
+				minInt(fromPixel.y, toPixel.y),
+				maxInt(fromPixel.x, toPixel.x),
+				maxInt(fromPixel.y, toPixel.y)
+			};
+
+			rect = ClipRect(rect, windowData->drawingZone);
+
+			int lineWidth = 1;
+			DrawBorderRect(windowData->windowBitmap, rect.xy(), rect.size(), 
+				lineWidth * windowData->drawingZoomLevel, GetSelectedColor(windowData));
 		}
 		break;
 	}

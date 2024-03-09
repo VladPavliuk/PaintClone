@@ -645,6 +645,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::TEXT_TOOL, DRAW_TOOL::TEXT, LoadBmpFile(L"./text.bmp")));
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::ERASER_TOOL, DRAW_TOOL::ERASER, LoadBmpFile(L"./eraser.bmp")));
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::LINE_TOOL, DRAW_TOOL::LINE, LoadBmpFile(L"./line.bmp")));
+	windowData.toolTiles.add(ToolTile(UI_ELEMENT::RECTANGLE_TOOL, DRAW_TOOL::RECTANGLE, LoadBmpFile(L"./rectangle.bmp")));
 
 	windowData.brushColorTiles = SimpleDynamicArray<BrushColorTile>(10);
 	windowData.brushColorTiles.add(BrushColorTile({ 0, 0, 0 }, UI_ELEMENT::COLOR_BRUCH_1));
