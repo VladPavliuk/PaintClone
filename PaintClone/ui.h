@@ -6,6 +6,7 @@
 #include "math.h"
 #include "text.h"
 #include "dialog_window.h"
+#include "open_file.h"
 
 void HandleUiElements(WindowData* windowData);
 

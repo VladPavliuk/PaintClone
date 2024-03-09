@@ -144,6 +144,7 @@
     <ClCompile Include="hash_table.h" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="math.cpp" />
+    <ClCompile Include="open_file.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="fonts.cpp" />
     <ClCompile Include="text.cpp" />
@@ -158,6 +159,7 @@
     <ClInclude Include="dynamic_array.h" />
     <ClInclude Include="files.h" />
     <ClInclude Include="math.h" />
+    <ClInclude Include="open_file.h" />
     <ClInclude Include="queue.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="fonts.h" />

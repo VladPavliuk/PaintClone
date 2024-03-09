@@ -51,6 +51,9 @@
     <ClCompile Include="dialog_window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="open_file.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window_data.h">
@@ -93,6 +96,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="dialog_window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="open_file.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

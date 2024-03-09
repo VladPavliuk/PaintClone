@@ -6,9 +6,15 @@
 #include "hash_table.h"
 #include "string.h"
 
+#define IDM_FILE_NEW 1
+#define IDM_FILE_OPEN 2
+#define IDM_FILE_SAVE 3
+#define IDM_FILE_SAVE_AS 4
+#define IDM_FILE_QUIT 5
+
 void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 {
-	const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
+	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\timesi.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\times.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\timesbi.ttf";
@@ -17,7 +23,7 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\corbel.ttf"; // THIS ONE HAS COMPLEX CONTOURS
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\comicbd.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\segoeuiz.ttf";
-	//const wchar_t* fontFilePath = L"Envy Code R.ttf";
+	const wchar_t* fontFilePath = L"Envy Code R.ttf";
 	//const wchar_t* fontFilePath = L"ShadeBlue-2OozX.ttf";
 
 	//> testing fonts
@@ -570,6 +576,53 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		break;
 	}
+	case WM_COMMAND:
+	{
+		WindowData* windowData = (WindowData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+		int menuItemId = LOWORD(wParam);
+		int wmEvent = HIWORD(wParam);
+
+		switch (menuItemId)
+		{
+		case IDM_FILE_OPEN:
+		{
+			WideString filePath;
+
+			if (ShowOpenFileDialog(windowData, &filePath))
+			{
+				//> load testing image
+				BmpImage testingLoadedImage = LoadBmpFile(filePath.chars);
+
+				free(windowData->canvasBitmap.pixels);
+				windowData->canvasBitmap.size = testingLoadedImage.size;
+				windowData->canvasBitmap.pixels = (ubyte4*)malloc(4 * windowData->canvasBitmap.size.x * windowData->canvasBitmap.size.y);
+
+				CalculateDrawingZoneSize(windowData);
+
+				CopyBitmapToBitmap(testingLoadedImage.rgbaBitmap, testingLoadedImage.size,
+					windowData->canvasBitmap.pixels, { 0, 0 }, windowData->canvasBitmap.size);
+
+				windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->canvasBitmap.size.x;
+				windowData->drawingBitmapInfo.bmiHeader.biHeight = windowData->canvasBitmap.size.y;
+
+				ValidateDrawingOffset(windowData);
+				//<
+				filePath.freeMemory();
+				free(testingLoadedImage.rgbaBitmap);
+			}
+
+			break;
+		}
+		case IDM_FILE_QUIT:
+		{
+			SendMessage(hwnd, WM_CLOSE, 0, 0);
+			//DestroyWindow(hWnd);
+			break;
+		}
+		}
+		break;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
@@ -638,6 +691,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	RasterizeTestingFontAndPutOnCanvas(&windowData);
 	//CreateGlyphsLayout(&windowData, WideString(L"Y\r\na"));
 
+	//> Create window menu
+	HMENU windowMenubar = CreateMenu();
+	HMENU windowFileMenu = CreateMenu();
+
+	if (windowFileMenu == NULL) assert(false);
+	if (windowMenubar == NULL) assert(false);
+
+	AppendMenu(windowMenubar, MF_POPUP, (UINT_PTR)windowFileMenu, L"&File");
+
+	AppendMenu(windowFileMenu, MF_STRING, IDM_FILE_NEW, L"&New");
+	AppendMenu(windowFileMenu, MF_STRING, IDM_FILE_OPEN, L"&Open..");
+	AppendMenu(windowFileMenu, MF_STRING, IDM_FILE_SAVE, L"&Save");
+	AppendMenu(windowFileMenu, MF_STRING, IDM_FILE_SAVE_AS, L"&Save As..");
+	AppendMenu(windowFileMenu, MF_SEPARATOR, 0, NULL);
+	AppendMenu(windowFileMenu, MF_STRING, IDM_FILE_QUIT, L"&Quit");
+
+	SetMenu(hwnd, windowMenubar);
+	DrawMenuBar(hwnd);
+	//<
+
 	windowData.toolTiles = SimpleDynamicArray<ToolTile>(10);
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::PENCIL_TOOL, DRAW_TOOL::PENCIL, LoadBmpFile(L"./pencil.bmp")));
 	windowData.toolTiles.add(ToolTile(UI_ELEMENT::FILL_TOOL, DRAW_TOOL::FILL, LoadBmpFile(L"./fill.bmp")));
@@ -663,6 +736,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	//DrawBorderRect(&windowData, {0,0}, { 100,100 }, 2, { 120,120,49 });
 	//FillFromPixel(&windowData, { 10,10 }, { 255, 0, 255 });
 	//DrawBorderRect(&windowData, { 500, 10 }, { 100, 10 }, 4, { 0,0,0 });
+
+
 	double deltasSum = 0.0f;
 	int framesCount = 1;
 	windowData.test = framesCount;
@@ -684,45 +759,36 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 
 		double timeDelta = GetCurrentTimestamp(&windowData);
 
-		FillBitmapWithWhite(windowData.windowBitmap.pixels, windowData.windowBitmap.size);
-		// ui
-		DrawColorsBrush(&windowData, &windowData.brushColorTiles, { 5, 5 }, { 15, 15 }, 5);
-		DrawToolsPanel(&windowData, { 5, 30 }, { 15, 15 }, 5);
-
-		int2 drawingZoneSize = windowData.drawingZone.size();
-		StretchDIBits(
-			windowData.backgroundDC,
-			windowData.drawingZone.x, windowData.windowBitmap.size.y - windowData.drawingZone.y - drawingZoneSize.y,
-			drawingZoneSize.x, drawingZoneSize.y,
-
-			(int)((float)windowData.drawingOffset.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingOffset.y / (float)windowData.drawingZoomLevel),
-			(int)((float)drawingZoneSize.x / (float)windowData.drawingZoomLevel), (int)((float)drawingZoneSize.y / (float)windowData.drawingZoomLevel),
-
-			windowData.canvasBitmap.pixels,
-			&windowData.drawingBitmapInfo,
-			DIB_RGB_COLORS, SRCCOPY
-		);
-
-		DrawDrawingCanvas(&windowData);
-		DrawDraggableCornerOfDrawingZone(&windowData);
-
-		DrawTextBlock(&windowData);
-		DrawTextBlockResizeButtons(&windowData);
-
-		DrawCanvasSizeLabel(&windowData);
-		DrawMouseCanvasPositionLabel(&windowData);
-
-		/*WideString modalWindowTitle = WideString(L"TEST");
-		DrawModalWindow(&windowData, &modalWindowTitle,{100,100,200,200}, UI_ELEMENT::COLOR_PICKER_MODAL_WINDOW);
-		modalWindowTitle.freeMemory();*/
-
-		/*if (windowData.sumbitedUi != UI_ELEMENT::NONE)
-		{
-			OutputDebugString(L"YEAH\n");
-		}*/
-
 		if (windowData.dialogType == DialogWindowType::NONE)
 		{
+			FillBitmapWithWhite(windowData.windowBitmap.pixels, windowData.windowBitmap.size);
+			// ui
+			DrawColorsBrush(&windowData, &windowData.brushColorTiles, { 5, 5 }, { 15, 15 }, 5);
+			DrawToolsPanel(&windowData, { 5, 30 }, { 15, 15 }, 5);
+
+			int2 drawingZoneSize = windowData.drawingZone.size();
+			StretchDIBits(
+				windowData.backgroundDC,
+				windowData.drawingZone.x, windowData.windowBitmap.size.y - windowData.drawingZone.y - drawingZoneSize.y,
+				drawingZoneSize.x, drawingZoneSize.y,
+
+				(int)((float)windowData.drawingOffset.x / (float)windowData.drawingZoomLevel), (int)((float)windowData.drawingOffset.y / (float)windowData.drawingZoomLevel),
+				(int)((float)drawingZoneSize.x / (float)windowData.drawingZoomLevel), (int)((float)drawingZoneSize.y / (float)windowData.drawingZoomLevel),
+
+				windowData.canvasBitmap.pixels,
+				&windowData.drawingBitmapInfo,
+				DIB_RGB_COLORS, SRCCOPY
+			);
+
+			DrawDrawingCanvas(&windowData);
+			DrawDraggableCornerOfDrawingZone(&windowData);
+
+			DrawTextBlock(&windowData);
+			DrawTextBlockResizeButtons(&windowData);
+
+			DrawCanvasSizeLabel(&windowData);
+			DrawMouseCanvasPositionLabel(&windowData);
+
 			HandleUiElements(&windowData);
 		}
 		else
