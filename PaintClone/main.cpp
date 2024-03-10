@@ -585,6 +585,22 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		switch (menuItemId)
 		{
+		case IDM_FILE_NEW:
+		{
+			free(windowData->canvasBitmap.pixels);
+			windowData->canvasBitmap.size = {500,500};
+			windowData->canvasBitmap.pixels = (ubyte4*)malloc(4 * windowData->canvasBitmap.size.x * windowData->canvasBitmap.size.y);
+
+			CalculateDrawingZoneSize(windowData);
+
+			windowData->drawingBitmapInfo.bmiHeader.biWidth = windowData->canvasBitmap.size.x;
+			windowData->drawingBitmapInfo.bmiHeader.biHeight = windowData->canvasBitmap.size.y;
+
+			ValidateDrawingOffset(windowData);
+			
+			FillBitmapWithWhite(windowData->canvasBitmap.pixels, windowData->canvasBitmap.size);
+			break;
+		}
 		case IDM_FILE_OPEN:
 		{
 			WideString filePath;

@@ -19,7 +19,7 @@ bool ShowOpenFileDialog(WindowData* windowData, WideString* filePath)
             COMDLG_FILTERSPEC fileTypes[] =
             {
                 { L"All Files", L"*"},
-                { L"All supported images (*.png | *.jpg | *.jpeg | *.psd)", L"*.png;*.jpg;*.jpeg;*.psd" },
+                { L"All supported images (*.png | *.jpg | *.jpeg | *.bmp | *.psd)", L"*.png;*.jpg;*.jpeg;*.bmp;*.psd" },
             };
             hr = pFileOpen->SetFileTypes(ARRAYSIZE(fileTypes), fileTypes);
 
