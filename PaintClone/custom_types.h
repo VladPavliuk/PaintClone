@@ -157,6 +157,7 @@ struct ubyte2
 
 typedef unsigned short ushort;
 typedef unsigned int uint;
+typedef unsigned long long uint64;
 
 struct float4
 {

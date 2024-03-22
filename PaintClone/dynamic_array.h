@@ -57,6 +57,30 @@ struct SimpleDynamicArray
 		length++;
 	}
 
+	void insert(int index, T item)
+	{
+		assert(index < _capacity);
+		assert(index >= 0);
+
+		if (index >= length)
+		{
+			set(index, item);
+			return;
+		}
+
+		length++;
+		if (length >= _capacity)
+		{
+			_capacity *= 2;
+
+			_elements = (T*)realloc(_elements, _singleElementSize * _capacity);
+			ZeroMemory(_elements + _capacity / 2, _singleElementSize * _capacity / 2);
+		}
+
+		memcpy(_elements + index + 1, _elements + index, _singleElementSize * ((length - 1) - index));
+		_elements[index] = item;
+	}
+
 	void set(int index, T item)
 	{
 		assert(index < _capacity);

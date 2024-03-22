@@ -141,10 +141,12 @@
     <ClCompile Include="common.cpp" />
     <ClCompile Include="dialog_window.cpp" />
     <ClCompile Include="files.cpp" />
+    <ClCompile Include="font_program.cpp" />
     <ClCompile Include="hash_table.h" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="math.cpp" />
     <ClCompile Include="open_file.cpp" />
+    <ClCompile Include="png_images.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="fonts.cpp" />
     <ClCompile Include="text.cpp" />
@@ -152,17 +154,21 @@
     <ClCompile Include="window_data.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="binary_tree.h" />
     <ClInclude Include="bmp_images.h" />
     <ClInclude Include="common.h" />
     <ClInclude Include="custom_types.h" />
     <ClInclude Include="dialog_window.h" />
     <ClInclude Include="dynamic_array.h" />
     <ClInclude Include="files.h" />
+    <ClInclude Include="font_program.h" />
     <ClInclude Include="math.h" />
     <ClInclude Include="open_file.h" />
+    <ClInclude Include="png_images.h" />
     <ClInclude Include="queue.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="fonts.h" />
+    <ClInclude Include="stack.h" />
     <ClInclude Include="string.h" />
     <ClInclude Include="text.h" />
     <ClInclude Include="ui.h" />

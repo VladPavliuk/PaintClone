@@ -5,6 +5,7 @@
 #include "hash_table.h"
 #include "math.h"
 #include "common.h"
+#include "font_program.h"
 //#include "renderer.h"
 
 struct FontGlyph
@@ -152,6 +153,7 @@ struct TTFmaxpTableVersion1
 };
 
 // for version 1.0
+#pragma pack(push,2)
 struct TTFmaxpTableVersion2
 {
 	uint version; // should be 0x00010000
@@ -170,6 +172,7 @@ struct TTFmaxpTableVersion2
 	ushort maxComponentElements;
 	ushort maxComponentDepth;
 };
+#pragma pack(pop)
 
 struct TTFcmapEncodingRecord
 {
@@ -226,6 +229,36 @@ struct TTFSimpleGlyph
 	SimpleDynamicArray<short> xCoordinates;
 	SimpleDynamicArray<short> yCoordinates;
 };
+
+struct TTFcvtTable
+{
+	SimpleDynamicArray<short> values;
+};
+
+struct TTFfpgmTable
+{
+	SimpleDynamicArray<ubyte> instructions;
+};
+
+struct TTFprepTable
+{
+	SimpleDynamicArray<ubyte> instructions;
+};
+
+//struct TTFHinting
+//{
+//	SimpleDynamicArray<uint> stack;
+//	SimpleDynamicArray<ubyte> instructions;
+//};
+
+struct TTFZone
+{
+	SimpleDynamicArray<int2> originalPoints;
+	SimpleDynamicArray<int2> originalPointsScaled;
+	SimpleDynamicArray<int2> hintedPointsScaled;
+	SimpleDynamicArray<ubyte> pointTypes;
+};
+
 //<
 
 void RasterizeFontGlyph(FontGlyph fontGlyph, int glyphPixelsHeight, ubyte** bitmap, int2* bitmapSize);

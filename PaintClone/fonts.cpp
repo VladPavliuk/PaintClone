@@ -291,6 +291,9 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 	TTFTableRecord headTableRecord = {};
 	TTFTableRecord hmtxTableRecord = {};
 	TTFTableRecord hheaTableRecord = {};
+	TTFTableRecord cvtTableRecord = {};
+	TTFTableRecord fpgmTableRecord = {};
+	TTFTableRecord prepTableRecord = {};
 
 	for (int i = 0; i < ttfFileHeader.numTables; i++)
 	{
@@ -327,6 +330,18 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 		{
 			hheaTableRecord = ttfTableRecord;
 		}
+		else if (CompareStrings("fpgm", 4, (const char*)ttfTableRecord.tag, 4))
+		{
+			fpgmTableRecord = ttfTableRecord;
+		}
+		else if (CompareStrings("cvt ", 4, (const char*)ttfTableRecord.tag, 4))
+		{
+			cvtTableRecord = ttfTableRecord;
+		}
+		else if (CompareStrings("prep", 4, (const char*)ttfTableRecord.tag, 4))
+		{
+			prepTableRecord = ttfTableRecord;
+		}
 
 		ttfFileBufferCursor += sizeof(TTFTableRecord);
 	}
@@ -349,26 +364,34 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 	}
 	//<
 
-	int numberOfGlyphs = -1;
+
 	// maxp table
+	int numberOfGlyphs = -1;
+
+	ttfFileBufferCursor = ttfFileBuffer + maxpTableRecord.offset;
+	TTFmaxpTableVersion2 ttfMaxpTableVersion2 = *(TTFmaxpTableVersion2*)ttfFileBufferCursor;
+
+	ttfMaxpTableVersion2.version = _byteswap_ulong(ttfMaxpTableVersion2.version);
+	if (ttfMaxpTableVersion2.version == 0x00005000)
 	{
-		ttfFileBufferCursor = ttfFileBuffer + maxpTableRecord.offset;
-
-		uint maxpTableVersion = _byteswap_ulong(*(uint*)ttfFileBufferCursor);
-		if (maxpTableVersion == 0x00005000)
-		{
-			// not implemented
-			assert(false);
-		}
-		else if (maxpTableVersion == 0x00010000)
-		{
-			TTFmaxpTableVersion2 ttfMaxpTableVersion2 = *(TTFmaxpTableVersion2*)ttfFileBufferCursor;
-
-			ttfMaxpTableVersion2.numGlyphs = _byteswap_ushort(ttfMaxpTableVersion2.numGlyphs);
-
-			numberOfGlyphs = ttfMaxpTableVersion2.numGlyphs;
-		}
+		assert(false);
 	}
+	ttfMaxpTableVersion2.numGlyphs = _byteswap_ushort(ttfMaxpTableVersion2.numGlyphs);
+	ttfMaxpTableVersion2.maxPoints = _byteswap_ushort(ttfMaxpTableVersion2.maxPoints);
+	ttfMaxpTableVersion2.maxContours = _byteswap_ushort(ttfMaxpTableVersion2.maxContours);
+	ttfMaxpTableVersion2.maxCompositePoints = _byteswap_ushort(ttfMaxpTableVersion2.maxCompositePoints);
+	ttfMaxpTableVersion2.maxCompositeContours = _byteswap_ushort(ttfMaxpTableVersion2.maxCompositeContours);
+	ttfMaxpTableVersion2.maxZones = _byteswap_ushort(ttfMaxpTableVersion2.maxZones);
+	ttfMaxpTableVersion2.maxTwilightPoints = _byteswap_ushort(ttfMaxpTableVersion2.maxTwilightPoints);
+	ttfMaxpTableVersion2.maxStorage = _byteswap_ushort(ttfMaxpTableVersion2.maxStorage);
+	ttfMaxpTableVersion2.maxFunctionDefs = _byteswap_ushort(ttfMaxpTableVersion2.maxFunctionDefs);
+	ttfMaxpTableVersion2.maxInstructionDefs = _byteswap_ushort(ttfMaxpTableVersion2.maxInstructionDefs);
+	ttfMaxpTableVersion2.maxStackElements = _byteswap_ushort(ttfMaxpTableVersion2.maxStackElements);
+	ttfMaxpTableVersion2.maxSizeOfInstructions = _byteswap_ushort(ttfMaxpTableVersion2.maxSizeOfInstructions);
+	ttfMaxpTableVersion2.maxComponentElements = _byteswap_ushort(ttfMaxpTableVersion2.maxComponentElements);
+	ttfMaxpTableVersion2.maxComponentDepth = _byteswap_ushort(ttfMaxpTableVersion2.maxComponentDepth);
+
+	numberOfGlyphs = ttfMaxpTableVersion2.numGlyphs;
 
 	//> hhea table
 	ttfFileBufferCursor = ttfFileBuffer + hheaTableRecord.offset;
@@ -573,6 +596,83 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 			assert(false);
 		}
 	}
+
+	//> cvt table
+	TTFcvtTable cvtTable;
+	int cvtValuesCount = cvtTableRecord.length / sizeof(short);
+	cvtTable.values = SimpleDynamicArray<short>(cvtValuesCount);
+	cvtTable.values.length = cvtValuesCount;
+
+	ttfFileBufferCursor = ttfFileBuffer + cvtTableRecord.offset;
+
+	memcpy(cvtTable.values._elements, ttfFileBufferCursor, cvtTableRecord.length);
+	//<
+
+	//> fpgm table
+	TTFfpgmTable fpgmTable;
+
+	fpgmTable.instructions = SimpleDynamicArray<ubyte>(fpgmTableRecord.length);
+	fpgmTable.instructions.length = fpgmTableRecord.length;
+
+	ttfFileBufferCursor = ttfFileBuffer + fpgmTableRecord.offset;
+
+	memcpy(fpgmTable.instructions._elements, ttfFileBufferCursor, fpgmTableRecord.length);
+	//<
+
+	//> prep table
+	TTFprepTable prepTable;
+
+	prepTable.instructions = SimpleDynamicArray<ubyte>(prepTableRecord.length);
+	prepTable.instructions.length = prepTableRecord.length;
+
+	ttfFileBufferCursor = ttfFileBuffer + prepTableRecord.offset;
+
+	memcpy(prepTable.instructions._elements, ttfFileBufferCursor, prepTableRecord.length);
+	//<
+
+	TTFProgram program;
+
+	program.functions = SimpleDynamicArray<TTFProgramFunction>::allocate(ttfMaxpTableVersion2.maxFunctionDefs);
+	program.stack = Stack<uint>::allocate(ttfMaxpTableVersion2.maxStackElements);
+
+	//> Execute fpgm instructions
+	program.fpgmInstructions.instructions = (ubyte*)malloc(fpgmTable.instructions.length);
+	memcpy(program.fpgmInstructions.instructions, fpgmTable.instructions._elements, fpgmTable.instructions.length);
+	program.fpgmInstructions.length = fpgmTable.instructions.length;
+	
+	program.instructions = program.fpgmInstructions.instructions;
+	program.instructionsLength = program.fpgmInstructions.length;
+	program.currentInstruction = program.instructions;
+
+	ConsolePrint("FPGM program\n");
+	TTFExecuteProgram(program);
+
+	program.stack->freeMemory();
+	//<
+
+	//> Prepare CV values
+	program.cv = SimpleDynamicArray<int>::allocate(cvtTable.values.length);
+	for (int i = 0; i < cvtTable.values.length; i++)
+	{
+		program.cv->add(cvtTable.values.get(i));
+	}
+	//<
+	program.stack = Stack<uint>::allocate(ttfMaxpTableVersion2.maxStackElements);
+
+	//> Execute prep instructions
+	program.prepInstructions.instructions = (ubyte*)malloc(prepTable.instructions.length);
+	memcpy(program.prepInstructions.instructions, prepTable.instructions._elements, prepTable.instructions.length);
+	program.prepInstructions.length = prepTable.instructions.length;
+
+	program.instructions = program.prepInstructions.instructions;
+	program.instructionsLength = program.prepInstructions.length;
+	program.currentInstruction = program.instructions;
+
+	ConsolePrint("PREP program\n");
+	TTFExecuteProgram(program);
+
+	program.stack->freeMemory();
+	//<
 
 	// glyf table
 	fontData.glyphs = HashTable<FontGlyph>(alphabet->length);
@@ -842,5 +942,3 @@ FontData ReadFontFromTTF(const wchar_t* ttfFilePath, SimpleDynamicArray<wchar_t>
 
 	return fontData;
 }
-
-

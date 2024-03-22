@@ -5,6 +5,7 @@
 #include "fonts.h"
 #include "hash_table.h"
 #include "string.h"
+#include "png_images.h"
 
 #define IDM_FILE_NEW 1
 #define IDM_FILE_OPEN 2
@@ -14,7 +15,7 @@
 
 void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 {
-	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
+	const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\arial.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\timesi.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\times.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\timesbi.ttf";
@@ -23,7 +24,7 @@ void RasterizeTestingFontAndPutOnCanvas(WindowData* windowData)
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\corbel.ttf"; // THIS ONE HAS COMPLEX CONTOURS
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\comicbd.ttf";
 	//const wchar_t* fontFilePath = L"C:\\Windows\\Fonts\\segoeuiz.ttf";
-	const wchar_t* fontFilePath = L"Envy Code R.ttf";
+	//const wchar_t* fontFilePath = L"Envy Code R.ttf";
 	//const wchar_t* fontFilePath = L"ShadeBlue-2OozX.ttf";
 
 	//> testing fonts
@@ -658,6 +659,13 @@ LRESULT WINAPI WindowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 // add dynamic lookup of a symbol, if it's not predefined in the alphabet
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, int windowMode)
 {
+	//SimpleDynamicArray<int> test = SimpleDynamicArray<int>(4);
+	//test.add(1);
+	//test.add(2);
+	//test.add(3);
+	//test.add(4);
+	//test.insert(1, 5);
+
 	/*WideString test = WideString(L"YEAH");
 
 	test.append(-12345980);*/
@@ -753,6 +761,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR pCmd, in
 	//FillFromPixel(&windowData, { 10,10 }, { 255, 0, 255 });
 	//DrawBorderRect(&windowData, { 500, 10 }, { 100, 10 }, 4, { 0,0,0 });
 
+	//LoadPngFile(L"C:\\Users\\Vlad\\Downloads\\testing_png_3.png");
 
 	double deltasSum = 0.0f;
 	int framesCount = 1;

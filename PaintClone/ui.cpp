@@ -107,7 +107,6 @@ void HandleUiElements(WindowData* windowData)
 	}
 	case UI_ELEMENT::PENCIL_TOOL:
 	{
-
 		windowData->selectedTool = DRAW_TOOL::PENCIL;
 		break;
 	}
@@ -317,14 +316,16 @@ void HandleUiElements(WindowData* windowData)
 	}
 	case UI_ELEMENT::CANVAS_VERTICAL_SCROLL:
 	{
-		windowData->drawingOffset.y += windowData->drawingZoomLevel * (windowData->mousePosition.y - windowData->prevMousePosition.y);
+		float canvasToDrawZoneRatioY = (float)windowData->canvasBitmap.size.y / (float)windowData->drawingZone.size().y;
+		windowData->drawingOffset.y += (int)(canvasToDrawZoneRatioY * windowData->drawingZoomLevel * (windowData->mousePosition.y - windowData->prevMousePosition.y));
 
 		ValidateDrawingOffset(windowData);
 		break;
 	}
 	case UI_ELEMENT::CANVAS_HORIZONTAL_SCROLL:
 	{
-		windowData->drawingOffset.x += windowData->drawingZoomLevel * (windowData->mousePosition.x - windowData->prevMousePosition.x);
+		float canvasToDrawZoneRatioX = (float)windowData->canvasBitmap.size.x / (float)windowData->drawingZone.size().x;
+		windowData->drawingOffset.x += (int)(canvasToDrawZoneRatioX * windowData->drawingZoomLevel * (windowData->mousePosition.x - windowData->prevMousePosition.x));
 
 		ValidateDrawingOffset(windowData);
 		break;
